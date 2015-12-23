@@ -5,6 +5,8 @@
 # Usage: This is a shell script that is intended to be sourced in 
 # a .bash_profile or other shell init script / file.
 # Alternatively, you can include it as needed by running "source ./AWS_STS_functions.bash"
+# 
+# See also my zsh functions at https://github.com/stefan-wuensch/AWS-goodies/blob/master/AWS_STS_functions.zsh
 #
 # Requirements: In order to have these functions work, you must have
 # previously set up access keys (aws_access_key_id and aws_secret_access_key).
