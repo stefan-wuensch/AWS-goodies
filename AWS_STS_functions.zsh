@@ -139,6 +139,13 @@ aws_session_files() {
 
 #######################################################################################################################
 
+# This function can be called as part of your PROMPT in .zshrc to show the AWS account name in the shell prompt!
+
+# Example: PROMPT='%B%m%b:%U%n%u:%! $(aws_profile_prompt)%# '
+# That will give a prompt that looks like:
+# 	mercury:wuensch:10116 [stefanaccount] %
+# Note you have to also "setopt prompt_subst" in your .zshrc for prompt substitution command execution to work.
+
 aws_profile_prompt() {
 	[[ -n "${AWS_SESSION_TOKEN}" ]] && [[ -n "${AWS_PROFILE}" ]] && echo "[${AWS_PROFILE}] "
 }
