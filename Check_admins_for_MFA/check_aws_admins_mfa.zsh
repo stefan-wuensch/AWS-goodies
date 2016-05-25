@@ -30,13 +30,13 @@
 
 
 # Sample output:
-# % check_aws_admins_mfa.zsh my-aws-account
+#   % check_aws_admins_mfa.zsh my-aws-account
 #   ########################################################################
-# MFA code for my-aws-account: 105211
-# Username: stefan
-# Success.
-# Will check the following groups: AWS_Admins
-# fred_flintstone is an admin but not in any MFA group - AWS account my-aws-account
+#   MFA code for my-aws-account: 105211
+#   Username: stefan
+#   Success.
+#   Will check the following groups: AWS_Admins
+#   fred_flintstone is an admin but not in any MFA group - AWS account my-aws-account
 
 
 # See also:
