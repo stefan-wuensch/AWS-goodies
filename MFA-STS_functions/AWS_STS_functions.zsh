@@ -24,6 +24,7 @@ aws_session_unset() {
 	unset AWS_ACCESS_KEY_ID
 	unset AWS_SECRET_ACCESS_KEY
 	unset AWS_SESSION_TOKEN
+	unset AWS_USERNAME
 }
 
 
@@ -33,7 +34,7 @@ aws_session_unset() {
 aws_session() {
 
 	aws_session_unset
-	[[ $# -ne 2 ]] && echo "Usage: $0 aws_profile MFA_code" && return
+	[[ $# -ne 2 ]] && echo "Usage: $0 aws_profile MFA_code" && return 1
 
 # 	echo -n "Enter AWS profile: "
 # 	local aws_profile
@@ -42,25 +43,26 @@ aws_session() {
 	grep "profile ${1}" $HOME/.aws/config >/dev/null 2>&1
 	if [[ $? -ne 0 ]] ; then
 		echo "Profile \"${1}\" not found in $HOME/.aws/config"
-		all_profiles=$( grep profile ${HOME}/.aws/config | awk '{print $2}' | cut -d']' -f1 | sort )
-		[[ -z "${all_profiles}" ]] && echo "Found no profiles in ${HOME}/.aws/config" && return
+		all_profiles=$( grep profile ${HOME}/.aws/config | grep -v '^\;' | awk '{print $2}' | cut -d']' -f1 | sort )
+		[[ -z "${all_profiles}" ]] && echo "Found no profiles in ${HOME}/.aws/config" && return 1
 		echo "Available profiles:"
 		echo "${all_profiles}"
-		return
+		return 1
 	fi
 	local aws_profile="${1}"
 
 	local username=$(aws --profile="$aws_profile" --region=us-east-1 iam get-user --query User.UserName --output=text)
-	echo "Username: ${username}"
+	echo "Your username: ${username}"
 	local device=$(aws --profile="$aws_profile" iam list-mfa-devices --user-name="$username" --query 'MFADevices[0].SerialNumber' --output=text)
 	local sts
 	sts=$(aws --profile="$aws_profile" sts get-session-token --duration-seconds=14400 --serial-number="$device" --token-code="${2}" --output=text)
-	[[ $? -ne 0 ]] && echo "Problem generating session token. Try again." && return
+	[[ $? -ne 0 ]] && echo "Problem generating session token. Try again." && return 1
 
 	export AWS_ACCESS_KEY_ID=$(echo "$sts" | cut -f 2)
 	export AWS_SECRET_ACCESS_KEY=$(echo "$sts" | cut -f 4)
 	export AWS_SESSION_TOKEN=$(echo "$sts" | cut -f 5)
 	export AWS_PROFILE="${aws_profile}"
+	export AWS_USERNAME="${username}"
 	echo "Success."
 }
 
