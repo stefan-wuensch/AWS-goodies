@@ -13,16 +13,36 @@
 # The optional argument is an AWS account to check. If no arg is given, all AWS accounts
 # found in your AWS config file will be checked.
 
+# Outputs:
+# - user names found in an admin group which don't also appear in a force-MFA group, or
+# - if all admins are in MFA group, then print "All OK"
+
 # Assumptions:
 # - all the AWS accounts you want to check are listed in your $HOME/.aws/config as a "profile" if not given as $1
 # - the user running this script (you!) are in an admin group
 # - the user running this script (you!) are required to use MFA since you're an admin
-# - the only admin group whose members are to be checked for MFA are the members of the same admin group as you
+# - the only admin group(s) whose members are to be checked for MFA are the members of the same admin group(s) as you
 # - the group name which forces MFA simply has the string "mfa" (case insensitive) in it
 
 # To do:
 # - examine the Policy of all groups to find which groups grant admin rights (this could be VERY difficult!)
 # - examine the Policy of all groups to find the exact group which forces the use of MFA (instead of just looking for a group name with "mfa" in it)
+
+
+# Sample output:
+# % check_aws_admins_mfa.zsh my-aws-account
+#   ########################################################################
+# MFA code for my-aws-account: 105211
+# Username: stefan
+# Success.
+# Will check the following groups: AWS_Admins
+# fred_flintstone is an admin but not in any MFA group - AWS account my-aws-account
+
+
+# See also:
+# https://blogs.aws.amazon.com/security/post/Tx2SJJYE082KBUK/How-to-Delegate-Management-of-Multi-Factor-Authentication-to-AWS-IAM-Users
+# https://s3.amazonaws.com/awsiammedia/public/sample/DelegateManagementofMFA/DelegateManagementofMFA_policydocument_060115.txt
+
 
 
 #####################################################################################################################
@@ -76,6 +96,8 @@ aws_session() {
 
 check_admin_users() {
 
+	found_admins_without_MFA="N"
+
 	if [[ -z "${AWS_USERNAME}" ]] ; then
 		local username=$(aws --profile="$aws_profile" --region=us-east-1 iam get-user --query User.UserName --output=text)
 		[[ -n "${username}" ]] && export AWS_USERNAME=${username}
@@ -93,8 +115,12 @@ check_admin_users() {
 	for user in $( echo $admin_users ) ; do
 		mfa_for_user=$( aws iam list-groups-for-user --user-name="${user}" --query='Groups[*].GroupName' --output=text | tr '\t' '\n' | grep -i mfa )
 	# 	echo "$user is in $mfa_for_user"
-		[[ -z "${mfa_for_user}" ]] && echo "$user is an admin but not in any MFA group - AWS account ${AWS_PROFILE}"
+		[[ -z "${mfa_for_user}" ]] && 
+			echo "$user is an admin but not in any MFA group - AWS account ${AWS_PROFILE}" && 
+			found_admins_without_MFA="Y"
 	done
+
+	[[ $found_admins_without_MFA == "N" ]] && echo "All OK - all users in admin groups are also in MFA group"
 
 }
 
