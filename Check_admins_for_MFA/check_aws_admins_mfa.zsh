@@ -78,6 +78,9 @@ aws_session() {
 	local aws_profile="${1}"
 
 	local username=$(aws --profile="$aws_profile" --region=us-east-1 iam get-user --query User.UserName --output=text)
+	if [[ $? -ne 0 ]] || [[ -z "${username}" ]] ; then
+		echo "Can't find your username." && return 1
+	fi
 	echo "Your username: ${username}"
 	local device=$(aws --profile="$aws_profile" iam list-mfa-devices --user-name="$username" --query 'MFADevices[0].SerialNumber' --output=text)
 	local sts
@@ -97,18 +100,22 @@ aws_session() {
 check_admin_users() {
 
 	found_admins_without_MFA="N"
+	cumulative_exit=0
 
 	if [[ -z "${AWS_USERNAME}" ]] ; then
 		local username=$(aws --profile="$aws_profile" --region=us-east-1 iam get-user --query User.UserName --output=text)
+		cumulative_exit=$(( cumulative_exit + $? ))
 		[[ -n "${username}" ]] && export AWS_USERNAME=${username}
 	fi
 
 	my_admin_groups=$( aws iam list-groups-for-user --user-name="${AWS_USERNAME}" --query='Groups[*].GroupName' --output=text | tr '\t' '\n' | grep -i admin )
+	cumulative_exit=$(( cumulative_exit + $? ))
 	echo "Will check the following groups: \n${my_admin_groups}"
 
 	admin_users=""
 	for group in $( echo $my_admin_groups ) ; do
 		this_groups_admins=$( aws iam get-group --group-name="${group}" --output=text --query='Users[*].UserName' )
+		cumulative_exit=$(( cumulative_exit + $? ))
 		admin_users="${admin_users} ${this_groups_admins}"
 	done
 
@@ -120,28 +127,49 @@ check_admin_users() {
 			found_admins_without_MFA="Y"
 	done
 
+	[[ $cumulative_exit -ne 0 ]] && echo "Problem checking account ${AWS_PROFILE}" && return $cumulative_exit
 	[[ $found_admins_without_MFA == "N" ]] && echo "All OK - all users in admin groups are also in MFA group"
 
 }
 
 #####################################################################################################################
 
+reset_STS() {
 
-if [[ $# -eq 0 ]] ; then
-	accounts=$( grep profile ~/.aws/config | grep -v '^\;' | cut -d' ' -f2 | cut -d']' -f1 )
-else
-	accounts="${1}"
-fi
-
-
-for account in $( echo $accounts ) ; do
-	echo "########################################################################"
+	local account="${1}"
 	aws_session_unset
 	printf "MFA code for ${account}: "
 	read code
 	aws_session $account $code
-	[[ $? -ne 0 ]] && continue
+	return $?
+}
+
+#####################################################################################################################
+
+
+if [[ $# -eq 0 ]] ; then	# Do all the accounts in AWS config file if there's no arg
+	accounts=$( grep profile ~/.aws/config | grep -v '^\;' | cut -d' ' -f2 | cut -d']' -f1 )
+	for account in $( echo $accounts ) ; do
+		echo "########################################################################"
+		reset_STS $account
+		[[ $? -ne 0 ]] && continue
+		check_admin_users
+		echo "\n"
+	done
+else
+	account="${1}"		# If there is an arg, see if there's already STS set up for it
+	if [[ -z "${AWS_PROFILE}" ]] || 
+		[[ -z "${AWS_USERNAME}" ]] ||
+		[[ -z "${AWS_SESSION_TOKEN}" ]] ||
+		[[ "${account}" != "${AWS_PROFILE}" ]] ; then
+			reset_STS $account
+			[[ $? -ne 0 ]] && echo "Problem checking account \"${account}\" - exiting" && exit 1
+	fi
+	aws ec2 describe-regions >/dev/null 2>&1
+	[[ $? -ne 0 ]] && reset_STS $account
+	echo "Checking account ${account}..."
 	check_admin_users
-	echo "\n"
-done
+fi
+
+
 
