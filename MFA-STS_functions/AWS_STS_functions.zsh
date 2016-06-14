@@ -59,6 +59,7 @@ aws_session() {
 	[[ $? -ne 0 ]] && echo "Problem generating session token. Try again." && return 1
 
 	export AWS_ACCESS_KEY_ID=$(echo "$sts" | cut -f 2)
+	export AWS_SESSION_EXPIRES=$( date -j -f "%Y-%m-%dT%H:%M:%SZ" $( echo "$sts" | cut -f 3 ) +%s )
 	export AWS_SECRET_ACCESS_KEY=$(echo "$sts" | cut -f 4)
 	export AWS_SESSION_TOKEN=$(echo "$sts" | cut -f 5)
 	export AWS_PROFILE="${aws_profile}"
@@ -149,7 +150,16 @@ aws_session_files() {
 # Note you have to also "setopt prompt_subst" in your .zshrc for prompt substitution command execution to work.
 
 aws_profile_prompt() {
-	[[ -n "${AWS_SESSION_TOKEN}" ]] && [[ -n "${AWS_PROFILE}" ]] && echo "[${AWS_PROFILE}] "
+	if [[ -n "${AWS_SESSION_TOKEN}" ]] && [[ -n "${AWS_PROFILE}" ]] ; then
+		expiresInString=""
+		[[ -n "${AWS_SESSION_EXPIRES}" ]] && expiresIn=$(( ( ${AWS_SESSION_EXPIRES} - $( date +%s ) ) / 60 ))
+		if [[ ${expiresIn} -gt 0 ]] ; then
+			expiresInString=":${expiresIn}min"
+		else
+			expiresInString=":EXPIRED"
+		fi
+		echo "[${AWS_PROFILE}${expiresInString}] "
+	fi
 }
 
 
