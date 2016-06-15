@@ -1,6 +1,6 @@
 #######################################################################################################################
 # This is a set of zsh functions that do the same / similar things to the ones 
-# that I developed with Al for bash. 
+# that I developed with Al P. for bash. 
 # 
 # I expanded them to allow a one-liner use case:
 # 	aws_session {aws-account-name} {MFA-code}
@@ -59,12 +59,13 @@ aws_session() {
 	[[ $? -ne 0 ]] && echo "Problem generating session token. Try again." && return 1
 
 	export AWS_ACCESS_KEY_ID=$(echo "$sts" | cut -f 2)
-	export AWS_SESSION_EXPIRES=$( date -j -f "%Y-%m-%dT%H:%M:%SZ" $( echo "$sts" | cut -f 3 ) +%s )
+	export AWS_SESSION_EXPIRES_ISO_8601=$( echo "$sts" | cut -f 3 )
+ 	export AWS_SESSION_EXPIRES=$( echo ${AWS_SESSION_EXPIRES_ISO_8601} | python -c "import calendar, sys; from datetime import datetime; print calendar.timegm(datetime.strptime( sys.stdin.read(), '%Y-%m-%dT%H:%M:%SZ\n').timetuple())" )
 	export AWS_SECRET_ACCESS_KEY=$(echo "$sts" | cut -f 4)
 	export AWS_SESSION_TOKEN=$(echo "$sts" | cut -f 5)
 	export AWS_PROFILE="${aws_profile}"
 	export AWS_USERNAME="${username}"
-	echo "Success."
+	echo "Success: ${AWS_USERNAME}@${AWS_PROFILE} expires $( echo ${AWS_SESSION_EXPIRES} | perl -pe 's/(\d{6,10})/localtime($1)/eg' )."
 }
 
 
