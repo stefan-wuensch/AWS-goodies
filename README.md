@@ -6,7 +6,7 @@ Stuff to make your life easier when working with AWS.
 MFA-STS_functions
 ===========
 
-AWS_STS_functions.bash
+AWS_STS_functions.sh
 ----------------------
 A collection of bash functions which set up AWS session tokens for CLI use with an MFA.
 

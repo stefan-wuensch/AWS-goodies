@@ -14,7 +14,7 @@
 
 # To-do: Add more comments.
 # For better documentation in the meantime, see:
-# https://github.com/stefan-wuensch/AWS-goodies/blob/master/AWS_STS_functions.bash
+# https://github.com/stefan-wuensch/AWS-goodies/blob/master/AWS_STS_functions.sh
 
 
 #######################################################################################################################
