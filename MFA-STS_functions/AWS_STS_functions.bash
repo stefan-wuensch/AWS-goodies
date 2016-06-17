@@ -26,8 +26,10 @@
 # http://docs.aws.amazon.com/cli/latest/topic/config-vars.html
 # http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html
 # 
+# 
 # Updates:
-# 2016-06-17 - Updated layout (cosmetic only)
+# 2016-06-17 	- Updated layout (cosmetic only) -- Stefan
+# 		- Added STS expiration countdown in prompt, plus output of expiration time when generated -- Stefan
 # 
 #######################################################################################################################
 
@@ -39,8 +41,22 @@
 #######################################################################################################################
 
 # Optional command prompt. This will prepend the AWS profile to your command prompt.
-export PROMPT_COMMAND="if [[ -n \"\$AWS_PROFILE\" ]] ; then echo -n [\$AWS_PROFILE]-; else echo -n ""; fi"
 
+# This is the original which doesn't include the expiration countdown
+# export PROMPT_COMMAND="if [[ -n \"\$AWS_PROFILE\" ]] ; then echo -n [\$AWS_PROFILE]-; else echo -n ""; fi"
+
+read -r -d '' PROMPT_COMMAND <<-'EOFPROMPT'
+	if [[ -n "${AWS_SESSION_TOKEN}" ]] && [[ -n "${AWS_PROFILE}" ]] ; then
+		expiresInString=""
+		[[ -n "${AWS_SESSION_EXPIRES}" ]] && expiresIn=$(( ( ${AWS_SESSION_EXPIRES} - $( date +%s ) ) / 60 ))
+		if [[ ${expiresIn} -gt 0 ]] ; then
+			expiresInString=":${expiresIn}min"
+		else
+			expiresInString=":EXPIRED"
+		fi
+		echo -n "[${AWS_PROFILE}${expiresInString}] "
+	fi
+EOFPROMPT
 
 
 
@@ -50,9 +66,12 @@ export PROMPT_COMMAND="if [[ -n \"\$AWS_PROFILE\" ]] ; then echo -n [\$AWS_PROFI
 function aws_session_unset() {
 	# Unset all AWS key and token session variables
 	unset AWS_ACCESS_KEY_ID
-	unset AWS_SECRET_ACCESS_KEY
-	unset AWS_SESSION_TOKEN
 	unset AWS_PROFILE
+	unset AWS_SECRET_ACCESS_KEY
+	unset AWS_SESSION_EXPIRES
+	unset AWS_SESSION_EXPIRES_ISO_8601
+	unset AWS_SESSION_TOKEN
+	unset AWS_USERNAME
 }
 
 
@@ -123,14 +142,18 @@ function aws_session() {
 	# Get the STS Token from AWS CLI
 	# Now that we have all the parts, we can make a call to IAM and get back the session info.
 	# The output is tab-delimited, and we only need fields 2, 4, and 5.
-	sts=$(aws --profile="$aws_profile" sts get-session-token --duration-seconds=3600 --serial-number="$device" --token-code="$code" --output=text)
+	sts=$(aws --profile="$aws_profile" sts get-session-token --duration-seconds=7200 --serial-number="$device" --token-code="$code" --output=text)
 	[[ -z "${sts}" ]] && echo "Error: Could not get session token for ${device} with code ${code}." && return
 
 	# Export AWS Access keys and tokens
 	export AWS_ACCESS_KEY_ID=$(echo "$sts" | cut -f 2)
+	export AWS_SESSION_EXPIRES_ISO_8601=$( echo "$sts" | cut -f 3 )
+ 	export AWS_SESSION_EXPIRES=$( echo ${AWS_SESSION_EXPIRES_ISO_8601} | python -c "import calendar, sys; from datetime import datetime; print calendar.timegm(datetime.strptime( sys.stdin.read(), '%Y-%m-%dT%H:%M:%SZ\n').timetuple())" )
 	export AWS_SECRET_ACCESS_KEY=$(echo "$sts" | cut -f 4)
 	export AWS_SESSION_TOKEN=$(echo "$sts" | cut -f 5)
-	export AWS_PROFILE=$aws_profile
+	export AWS_PROFILE="${aws_profile}"
+	export AWS_USERNAME="${username}"
+	echo "Success: ${AWS_USERNAME}@${AWS_PROFILE} expires $( echo ${AWS_SESSION_EXPIRES} | perl -pe 's/(\d{6,10})/localtime($1)/eg' )."
 }
 
 #######################################################################################################################

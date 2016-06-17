@@ -20,9 +20,11 @@
 #######################################################################################################################
 
 aws_session_unset() {
-	unset AWS_PROFILE
 	unset AWS_ACCESS_KEY_ID
+	unset AWS_PROFILE
 	unset AWS_SECRET_ACCESS_KEY
+	unset AWS_SESSION_EXPIRES
+	unset AWS_SESSION_EXPIRES_ISO_8601
 	unset AWS_SESSION_TOKEN
 	unset AWS_USERNAME
 }
