@@ -1,11 +1,11 @@
 #######################################################################################################################
-# This file: AWS_STS_functions.bash
+# This file: AWS_STS_functions.sh
 #
 # Summer 2015 by Al Pacheco and Stefan Wuensch
 #
 # Usage: This is a shell script that is intended to be sourced in 
 # a .bash_profile or other shell init script / file.
-# Alternatively, you can include it as needed by running "source ./AWS_STS_functions.bash"
+# Alternatively, you can include it as needed by running "source ./AWS_STS_functions.sh"
 # 
 # See also my zsh functions at https://github.com/stefan-wuensch/AWS-goodies/blob/master/AWS_STS_functions.zsh
 # 
