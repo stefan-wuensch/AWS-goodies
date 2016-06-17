@@ -1,3 +1,4 @@
+#######################################################################################################################
 # This file: AWS_STS_functions.bash
 #
 # Summer 2015 by Al Pacheco and Stefan Wuensch
@@ -24,90 +25,113 @@
 # http://blogs.aws.amazon.com/security/post/Tx3D6U6WSFGOK2H/A-New-and-Standardized-Way-to-Manage-Credentials-in-the-AWS-SDKs
 # http://docs.aws.amazon.com/cli/latest/topic/config-vars.html
 # http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html
+# 
+# Updates:
+# 2016-06-17 - Updated layout (cosmetic only)
+# 
+#######################################################################################################################
 
+
+
+
+
+
+#######################################################################################################################
 
 # Optional command prompt. This will prepend the AWS profile to your command prompt.
 export PROMPT_COMMAND="if [[ -n \"\$AWS_PROFILE\" ]] ; then echo -n [\$AWS_PROFILE]-; else echo -n ""; fi"
 
 
+
+
+#######################################################################################################################
+
 # This function will clear the STS token environment variables
 function aws_session_unset() {
-  # Unset all AWS key and token session variables
-  unset AWS_ACCESS_KEY_ID
-  unset AWS_SECRET_ACCESS_KEY
-  unset AWS_SESSION_TOKEN
-  unset AWS_PROFILE
-
+	# Unset all AWS key and token session variables
+	unset AWS_ACCESS_KEY_ID
+	unset AWS_SECRET_ACCESS_KEY
+	unset AWS_SESSION_TOKEN
+	unset AWS_PROFILE
 }
 
+
+
+
+
+
+#######################################################################################################################
 
 # This function will set up the STS token.
 # It reads in the AWS account name (profile) and queries AWS IAM
 # for the user name, MFA device, and then generates a session token.
 function aws_session() {
 
-  echo "Setting up AWS session authentication using your MFA..."
+	echo "Setting up AWS session authentication using your MFA..."
 
-  # Define the following variables to be only in the scope of this function, for safety.
-  local aws_profile
-  local username
-  local device
-  local code
-  local sts
+	# Define the following variables to be only in the scope of this function, for safety.
+	local aws_profile
+	local username
+	local device
+	local code
+	local sts
 
-  # Clear any previous AWS key and token session variables
-  # Uses the "unset" function defined above.
-  aws_session_unset
+	# Clear any previous AWS key and token session variables
+	# Uses the "unset" function defined above.
+	aws_session_unset
 
-  # Read in the AWS profile / account name from the keyboard, and echo it back for a sanity check.
-  # This isn't done as a command-line arg because it's assumed a human is 
-  # involved in running this function (since the human has to read their MFA device).
-  # This is the same value as what's in the "profile" stanza in a ~/.aws/config file,
-  # and also the same as the AWS account name.
-  echo -n "Enter AWS profile / account name: "
-  read aws_profile
-  echo "Using AWS Profile \"$aws_profile\""
+	# Read in the AWS profile / account name from the keyboard, and echo it back for a sanity check.
+	# This isn't done as a command-line arg because it's assumed a human is 
+	# involved in running this function (since the human has to read their MFA device).
+	# This is the same value as what's in the "profile" stanza in a ~/.aws/config file,
+	# and also the same as the AWS account name.
+	echo -n "Enter AWS profile / account name: "
+	read aws_profile
+	echo "Using AWS Profile \"$aws_profile\""
 
-  # Grab the username from AWS CLI with given AWS profile, or ask for it if that fails.
-  # As noted elsewhere, this requires credentials in the form of ~/.aws/config or ~/.aws/credentials files.
-  # If the aws_profile (read from above) is not found in the local files, this will error.
-  # If it fails, we'll still give the user a chance to enter their username... but that won't make any 
-  # difference if the reason it failed was from lack of credentials in files... because even if
-  # the user gives their username manually here it's still going to fail below on the "sts get-session-token" call.
-  # Asking the user for their username is only in case this "iam get-user" call failed from a transient error.
-  username=$(aws --profile="$aws_profile" --region=us-east-1 iam get-user --query User.UserName --output=text)
-  if [[ -z "${username}" ]] ; then
-    echo -n "Enter AWS user name: "
-    read username
-  fi
-  echo "Using user name \"$username\""
+	# Grab the username from AWS CLI with given AWS profile, or ask for it if that fails.
+	# As noted elsewhere, this requires credentials in the form of ~/.aws/config or ~/.aws/credentials files.
+	# If the aws_profile (read from above) is not found in the local files, this will error.
+	# If it fails, we'll still give the user a chance to enter their username... but that won't make any 
+	# difference if the reason it failed was from lack of credentials in files... because even if
+	# the user gives their username manually here it's still going to fail below on the "sts get-session-token" call.
+	# Asking the user for their username is only in case this "iam get-user" call failed from a transient error.
+	username=$(aws --profile="$aws_profile" --region=us-east-1 iam get-user --query User.UserName --output=text)
+	if [[ -z "${username}" ]] ; then
+		echo -n "Enter AWS user name: "
+		read username
+	fi
+	echo "Using user name \"$username\""
 
-  # Grab the MFA device arn from AWS CLI
-  # Same idea as previous call "iam get-user" above - this will fail but just in case it's transient 
-  # we'll give the user a chance to enter it manually. (It's unlikely someone will know their MFA ARN though.)
-  device=$(aws --profile="$aws_profile" iam list-mfa-devices --user-name="$username" --query 'MFADevices[0].SerialNumber' --output=text)
-  [[ "${device}" = "None" ]] && echo "Error: No MFA device appears to be set up for user \"${username}\"" && return
-  if [[ -z "${device}" ]] ; then
-    echo "Error: Lookup failed for MFADevices SerialNumber from call to AWS IAM."
-    echo "Example format of MFA arn: arn:aws:iam::123456123456:mfa/johnharvard"
-    echo -n "Enter MFA arn: "
-    read device
-  fi
+	# Grab the MFA device arn from AWS CLI
+	# Same idea as previous call "iam get-user" above - this will fail but just in case it's transient 
+	# we'll give the user a chance to enter it manually. (It's unlikely someone will know their MFA ARN though.)
+	device=$(aws --profile="$aws_profile" iam list-mfa-devices --user-name="$username" --query 'MFADevices[0].SerialNumber' --output=text)
+	[[ "${device}" = "None" ]] && echo "Error: No MFA device appears to be set up for user \"${username}\"" && return
+	if [[ -z "${device}" ]] ; then
+		echo "Error: Lookup failed for MFADevices SerialNumber from call to AWS IAM."
+		echo "Example format of MFA arn: arn:aws:iam::123456123456:mfa/johnharvard"
+		echo -n "Enter MFA arn: "
+		read device
+	fi
 
-  # Ask for the code from the MFA. Other than asking for the profile / account name earlier, 
-  # if everything is working properly this code is the only other thing the user needs to enter.
-  echo -n "Enter authentication code for ${device}: "
-  read code
+	# Ask for the code from the MFA. Other than asking for the profile / account name earlier, 
+	# if everything is working properly this code is the only other thing the user needs to enter.
+	echo -n "Enter authentication code for ${device}: "
+	read code
 
-  # Get the STS Token from AWS CLI
-  # Now that we have all the parts, we can make a call to IAM and get back the session info.
-  # The output is tab-delimited, and we only need fields 2, 4, and 5.
-  sts=$(aws --profile="$aws_profile" sts get-session-token --duration-seconds=3600 --serial-number="$device" --token-code="$code" --output=text)
-  [[ -z "${sts}" ]] && echo "Error: Could not get session token for ${device} with code ${code}." && return
+	# Get the STS Token from AWS CLI
+	# Now that we have all the parts, we can make a call to IAM and get back the session info.
+	# The output is tab-delimited, and we only need fields 2, 4, and 5.
+	sts=$(aws --profile="$aws_profile" sts get-session-token --duration-seconds=3600 --serial-number="$device" --token-code="$code" --output=text)
+	[[ -z "${sts}" ]] && echo "Error: Could not get session token for ${device} with code ${code}." && return
 
-  # Export AWS Access keys and tokens
-  export AWS_ACCESS_KEY_ID=$(echo "$sts" | cut -f 2)
-  export AWS_SECRET_ACCESS_KEY=$(echo "$sts" | cut -f 4)
-  export AWS_SESSION_TOKEN=$(echo "$sts" | cut -f 5)
-  export AWS_PROFILE=$aws_profile
+	# Export AWS Access keys and tokens
+	export AWS_ACCESS_KEY_ID=$(echo "$sts" | cut -f 2)
+	export AWS_SECRET_ACCESS_KEY=$(echo "$sts" | cut -f 4)
+	export AWS_SESSION_TOKEN=$(echo "$sts" | cut -f 5)
+	export AWS_PROFILE=$aws_profile
 }
+
+#######################################################################################################################
+
