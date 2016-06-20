@@ -1,8 +1,15 @@
 Stuff to make your life easier when working with AWS.
-=============
+==================
 
 
 See also https://bitbucket.org/srw812/stefan-misc/src
+
+
+Bitbucket-S3-diff.zsh
+-------------
+Script which compares a local repo check-out to a remote S3 bucket location. Displays file differences
+and gives command examples to sync / upload.
+
 
 
 Check_admins_for_MFA
@@ -24,9 +31,10 @@ A collection of shell code / functions which set up AWS session tokens for CLI u
 
 
 
-Bitbucket-S3-diff.zsh
--------------
-Script which compares a local repo check-out to a remote S3 bucket location. Displays file differences
-and gives command examples to sync / upload.
-
-
+Generic_Safe_Temp_Dir_Function.sh
+---------------------------------
+This code can be dropped into any bash script for setting up a temporary
+directory. The directory will be created with a unique name, and will
+be automatically removed (along with all the contents) when the script
+completes. Note that the "EXIT" being trapped will catch any exit of the 
+script that includes this code - not just user-generated signals like ^C.
