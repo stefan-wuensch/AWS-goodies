@@ -11,8 +11,8 @@
 # 
 # The general idea is:
 # 1) Run an "S3 sync" dry run (don't actually do anything, just report)
-# 2) Take the output from the "S3 sync" command and iterate over each object
-# 3) Compare each object, and show useful meta-data about what's different or if they are the same
+# 2) Take the output from the "S3 sync" command and iterate over each object that it wants to copy
+# 3) Compare each object, and show useful info about what's different or if they are the same
 # 
 # NOTE: This script assumes that Bitbucket is the "source of truth" and that you want to be eventually
 # copying _from_ Bitbucket _to_ S3. However, since this script does not actually do anything (it merely
@@ -23,11 +23,15 @@
 # with leading '#' other than useful AWS CLI commands that you might want to run. This (hopefully) makes
 # it really easy to run individual "aws s3 cp" operations by simply copying and pasting the example line.
 # 
-# Usage suggestion: Since this script iterates across all objects in the location and displays "Same" 
-# if they are identical, it can be annoying for some people to see all the output for matching objects.
-# Instead you can try running "Bitbucket-S3-diff.zsh >/dev/null ; echo $?"
+# Usage suggestion: Since this script iterates across all objects in the location which "s3 sync" has shown
+# to be different in ANY way, it can be annoying for some people to see all the output for matching objects.
+# (The "s3 sync" wants to copy items based on metadata NOT contents - which is why I wrote this script!)
+# Instead of reading through lots of "Same" you can try running "Bitbucket-S3-diff.zsh >/dev/null ; echo $?"
 # If you get a non-zero exit status you know something didn't match, and you should run it again and
 # examine the output. If you do get a zero exit status, everything matches and you can move on. :-)
+# Also, if you get "There were no differences found" but there's lots of output saying "Same" then you know
+# that ONLY the objects' metadata is different - so there should be no harm in doing the "s3 sync" in full
+# because then all the metadata will also be matching.
 # 
 #############################################################################################################
 
@@ -96,7 +100,7 @@ aws s3 sync . "${S3_BUCKET_LOCATION}" --dryrun 2>&1 | tr '\r' '\n' | grep -i upl
 		if [[ ${?} -eq 0 ]] ; then
 			aws s3 cp ${remote} - 2>/dev/null | diff ${local} -	# The real work is done right here
 			diffExit=${?}
-			[[ ${diffExit} -eq 0 ]] && echo -e "# Same\n"
+			[[ ${diffExit} -eq 0 ]] && echo -e "# Same (only the metadata differs)\n"
 		else
 			echo -e "# Remote object not found"
 			diffExit=1
