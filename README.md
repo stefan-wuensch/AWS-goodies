@@ -2,7 +2,7 @@ Stuff to make your life easier when working with AWS.
 ==================
 
 
-See also https://bitbucket.org/srw812/stefan-misc/src
+See also https://bitbucket.org/srw812/aws-goodies-in-bitbucket/src
 
 
 Bitbucket-S3-diff.zsh
