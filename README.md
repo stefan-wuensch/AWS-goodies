@@ -4,23 +4,17 @@ Stuff to make your life easier when working with AWS.
 
 
 MFA-STS_functions
-===========
-
-AWS_STS_functions.sh
 ----------------------
-A collection of bash functions which set up AWS session tokens for CLI use with an MFA.
-
-AWS_STS_functions.zsh
----------------------
-A similar collection of functions (but for zsh) which include additional functionality, such as one-line invocation. 
+A collection of shell code / functions which set up AWS session tokens for CLI use with an MFA.
 
 
+Bitbucket-S3-diff.zsh
+-------------
+Script which compares a local repo check-out to a remote S3 bucket location. Displays file differences
+and gives command examples to sync / upload.
 
 
 Check_admins_for_MFA
-===========
-
-check_aws_admins_mfa.zsh
 ----------------------
 A script which looks at all the user accounts in an administrators' group and checks to see if they are also in 
 a group which enforces the use of MFA.
