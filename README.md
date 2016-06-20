@@ -2,6 +2,9 @@ Stuff to make your life easier when working with AWS.
 =============
 
 
+See also https://bitbucket.org/srw812/stefan-misc/src
+
+
 Check_admins_for_MFA
 ----------------------
 A script which looks at all the user accounts in an administrators' group and checks to see if they are also in 
