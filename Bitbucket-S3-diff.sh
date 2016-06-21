@@ -85,31 +85,32 @@ echo -e "\n# Note: Remote file may be reported by diff as '-' if not a text file
 echo -e "\n# NOTE: The \"aws s3 sync\" and \"aws s3 cp\" examples are for copying _TO_ S3."
 echo -e "# To copy _FROM_ S3 to local, reverse the arguments.\n"
 
-export cumulativeDiffExit=0	# This tracks our overall sucess / failure; exporting it to be available in the 'while' subshell below
+cumulativeDiffExit=0	# This tracks our overall sucess / failure
 
 # Here we go! First thing is to run an "s3 sync" dry run. Then we parse the output from that.
 # Note we're adusting the output with 'tr' because the usual display of "s3 sync" over-writes
 # a line of output that we want by sending a '\r'. It looks nice when you run it, but without 
 # changing the CR to a NL we wouldn't get the 'grep' to work properly.
-aws s3 sync . "${S3_BUCKET_LOCATION}" --dryrun 2>&1 | tr '\r' '\n' | grep -i upload | awk '{print $3,$5}' | 
-	while read -r local remote ; do 
-		echo -e "#==============================================================================================================" 
-		echo -e "< local file: ${local}"
-		echo -e "> remote file: ${remote}\n"
-		aws s3 ls "${remote}" >/dev/null 2>&1	# This checks if the remote object is there or not
-		if [[ ${?} -eq 0 ]] ; then
-			aws s3 cp "${remote}" - 2>/dev/null | diff "${local}" -	# The real work is done right here
-			diffExit=${?}
-			[[ ${diffExit} -eq 0 ]] && echo -e "# Same (only the metadata differs)\n"
-		else
-			echo -e "# Remote object not found"
-			diffExit=1
-		fi
-		export cumulativeDiffExit=$(( cumulativeDiffExit + diffExit ))
-		[[ ${diffExit} -ne 0 ]] && echo -e "\n# To upload ONLY this file to S3, run the following:" &&
-			echo "aws s3 cp ${local} ${remote}"
-		echo -e "\n\n"
-	done
+# Note the input to the 'while' loop is via process substitution, because bash would run a subshell
+# if we were piping it in... and a subshell can't modify our 'cumulativeDiffExit' for tracking total diffs.
+while read -r local remote ; do 
+	echo -e "#==============================================================================================================" 
+	echo -e "< local file: ${local}"
+	echo -e "> remote file: ${remote}\n"
+	aws s3 ls "${remote}" >/dev/null 2>&1	# This checks if the remote object is there or not
+	if [[ ${?} -eq 0 ]] ; then
+		aws s3 cp "${remote}" - 2>/dev/null | diff "${local}" -	# The real work is done right here
+		diffExit=${?}
+		[[ ${diffExit} -eq 0 ]] && echo -e "# Same (only the metadata differs)\n"
+	else
+		echo -e "# Remote object not found"
+		diffExit=1
+	fi
+	cumulativeDiffExit=$(( cumulativeDiffExit + diffExit ))
+	[[ ${diffExit} -ne 0 ]] && echo -e "\n# To upload ONLY this file to S3, run the following:" &&
+		echo "aws s3 cp ${local} ${remote}"
+	echo -e "\n\n"
+done < <( aws s3 sync . "${S3_BUCKET_LOCATION}" --dryrun 2>&1 | tr '\r' '\n' | grep -i upload | awk '{print $3,$5}' )
 
 [[ ${cumulativeDiffExit} -eq 0 ]] && echo -e "# **** There were no differences found! **** \n" && exit 0
 exit 1
