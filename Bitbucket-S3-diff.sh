@@ -1,7 +1,7 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 
 #############################################################################################################
-# Bitbucket-S3-diff.zsh
+# Bitbucket-S3-diff.sh
 # 
 # by Stefan Wuensch, June 2016
 # 
@@ -26,7 +26,7 @@
 # Usage suggestion: Since this script iterates across all objects in the location which "s3 sync" has shown
 # to be different in ANY way, it can be annoying for some people to see all the output for matching objects.
 # (The "s3 sync" wants to copy items based on metadata NOT contents - which is why I wrote this script!)
-# Instead of reading through lots of "Same" you can try running "Bitbucket-S3-diff.zsh >/dev/null ; echo $?"
+# Instead of reading through lots of "Same" you can try running "Bitbucket-S3-diff.sh >/dev/null ; echo $?"
 # If you get a non-zero exit status you know something didn't match, and you should run it again and
 # examine the output. If you do get a zero exit status, everything matches and you can move on. :-)
 # Also, if you get "There were no differences found" but there's lots of output saying "Same" then you know
@@ -85,27 +85,27 @@ echo -e "\n# Note: Remote file may be reported by diff as '-' if not a text file
 echo -e "\n# NOTE: The \"aws s3 sync\" and \"aws s3 cp\" examples are for copying _TO_ S3."
 echo -e "# To copy _FROM_ S3 to local, reverse the arguments.\n"
 
-cumulativeDiffExit=0	# This tracks our overall sucess / failure
+export cumulativeDiffExit=0	# This tracks our overall sucess / failure; exporting it to be available in the 'while' subshell below
 
 # Here we go! First thing is to run an "s3 sync" dry run. Then we parse the output from that.
 # Note we're adusting the output with 'tr' because the usual display of "s3 sync" over-writes
 # a line of output that we want by sending a '\r'. It looks nice when you run it, but without 
 # changing the CR to a NL we wouldn't get the 'grep' to work properly.
 aws s3 sync . "${S3_BUCKET_LOCATION}" --dryrun 2>&1 | tr '\r' '\n' | grep -i upload | awk '{print $3,$5}' | 
-	while read local remote ; do 
+	while read -r local remote ; do 
 		echo -e "#==============================================================================================================" 
 		echo -e "< local file: ${local}"
 		echo -e "> remote file: ${remote}\n"
-		aws s3 ls ${remote} >/dev/null 2>&1	# This checks if the remote object is there or not
+		aws s3 ls "${remote}" >/dev/null 2>&1	# This checks if the remote object is there or not
 		if [[ ${?} -eq 0 ]] ; then
-			aws s3 cp ${remote} - 2>/dev/null | diff ${local} -	# The real work is done right here
+			aws s3 cp "${remote}" - 2>/dev/null | diff "${local}" -	# The real work is done right here
 			diffExit=${?}
 			[[ ${diffExit} -eq 0 ]] && echo -e "# Same (only the metadata differs)\n"
 		else
 			echo -e "# Remote object not found"
 			diffExit=1
 		fi
-		cumulativeDiffExit=$(( cumulativeDiffExit + diffExit ))
+		export cumulativeDiffExit=$(( cumulativeDiffExit + diffExit ))
 		[[ ${diffExit} -ne 0 ]] && echo -e "\n# To upload ONLY this file to S3, run the following:" &&
 			echo "aws s3 cp ${local} ${remote}"
 		echo -e "\n\n"
