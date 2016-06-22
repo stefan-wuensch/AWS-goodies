@@ -85,7 +85,8 @@ echo -e "\n# Note: Remote file may be reported by diff as '-' if not a text file
 echo -e "\n# NOTE: The \"aws s3 sync\" and \"aws s3 cp\" examples are for copying _TO_ S3."
 echo -e "# To copy _FROM_ S3 to local, reverse the arguments.\n"
 
-cumulativeDiffExit=0	# This tracks our overall sucess / failure
+cumulativeDiffExit=0 		# This tracks our overall sucess / failure
+foundAnyS3Differences="N" 	# This tracks if the "s3 sync" actually found anything different
 
 # Here we go! First thing is to run an "s3 sync" dry run. Then we parse the output from that.
 # Note we're adusting the output with 'tr' because the usual display of "s3 sync" over-writes
@@ -94,6 +95,7 @@ cumulativeDiffExit=0	# This tracks our overall sucess / failure
 # Note the input to the 'while' loop is via process substitution, because bash would run a subshell
 # if we were piping it in... and a subshell can't modify our 'cumulativeDiffExit' for tracking total diffs.
 while read -r local remote ; do 
+	foundAnyS3Differences="Y" 	# If we are actually running in the loop, "s3 sync" found at least one thing
 	echo -e "#==============================================================================================================" 
 	echo -e "< local file: ${local}"
 	echo -e "> remote file: ${remote}\n"
@@ -112,5 +114,14 @@ while read -r local remote ; do
 	echo -e "\n\n"
 done < <( aws s3 sync . "${S3_BUCKET_LOCATION}" --dryrun 2>&1 | tr '\r' '\n' | grep -i upload | awk '{print $3,$5}' )
 
-[[ ${cumulativeDiffExit} -eq 0 ]] && echo -e "# **** There were no differences found! **** \n" && exit 0
+if [[ ${cumulativeDiffExit} -eq 0 ]] ; then
+	echo -e "# **** There were no differences found! **** \n"
+	if [[ "${foundAnyS3Differences}" != "N" ]] ; then
+		echo -e "# Since all the objects above differ _only_ by metadata and NOT by content,"
+		echo -e "# you can safely run the following sync command. (You need to remove the \"--dryrun\" yourself.)"
+		echo -e "aws s3 sync $( /bin/pwd -P ) ${S3_BUCKET_LOCATION} --dryrun"
+		echo -e "# This will update S3 so subsequent runs of this script won't show all the long output as just now.\n"
+	fi
+fi
+[[ ${cumulativeDiffExit} -eq 0 ]] && exit 0
 exit 1
