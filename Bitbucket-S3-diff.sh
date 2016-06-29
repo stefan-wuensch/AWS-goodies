@@ -115,7 +115,7 @@ while read -r local remote ; do
 done < <( aws s3 sync . "${S3_BUCKET_LOCATION}" --dryrun 2>&1 | tr '\r' '\n' | grep -i upload | awk '{print $3,$5}' )
 
 if [[ ${cumulativeDiffExit} -eq 0 ]] ; then
-	echo -e "# **** There were no differences found! **** \n"
+	echo -e "# ************ There were no differences found! ************ \n"
 	if [[ "${foundAnyS3Differences}" != "N" ]] ; then
 		echo -e "# Since all the objects above differ _only_ by metadata and NOT by content,"
 		echo -e "# you can safely run the following sync command. (You need to remove the \"--dryrun\" yourself.)"
