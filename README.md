@@ -5,13 +5,6 @@ Stuff to make your life easier when working with AWS.
 See also https://bitbucket.org/srw812/aws-goodies-in-bitbucket/src
 
 
-Bitbucket-S3-diff.zsh
--------------
-Script which compares a local repo check-out to a remote S3 bucket location. Displays file differences
-and gives command examples to sync / upload.
-
-
-
 Check_admins_for_MFA
 ----------------------
 A script which looks at all the user accounts in an administrators' group and checks to see if they are also in 
@@ -28,6 +21,13 @@ MFA-STS_functions
 ----------------------
 A collection of shell code / functions which set up AWS session tokens for CLI use with an MFA.
 
+
+
+
+Bitbucket-S3-diff.zsh
+-------------
+Script which compares a local repo check-out to a remote S3 bucket location. Displays file differences
+and gives command examples to sync / upload.
 
 
 
