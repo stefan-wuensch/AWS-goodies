@@ -66,9 +66,9 @@ S3_BUCKET_LOCATION="$( head -1 ${S3_BUCKET_LOCATION_FILE} | cut -d, -f2 )"
 # 3) your STS credentials are for a different AWS account
 aws s3 ls "${S3_BUCKET_LOCATION}/" >/dev/null 2>&1
 if [[ ${?} -ne 0 ]] ; then
-	echo "Error: Can't do \"aws s3 ls ${S3_BUCKET_LOCATION}/\""
-	echo "Check your STS token / session to be for \"${S3_BUCKET_ACCOUNT}\" and make sure that the remote location is valid for that account."
-	[[ -n "${AWS_PROFILE}" ]] && echo "(Your current STS session appears to be for \"${AWS_PROFILE}\")"
+	echo -e "\n# ***** Error: Can't do \"aws s3 ls ${S3_BUCKET_LOCATION}/\" *****"
+	echo -e "# Check your STS token / session to be for \"${S3_BUCKET_ACCOUNT}\" and make sure that the remote location is valid for that account."
+	[[ -n "${AWS_PROFILE}" ]] && echo "# (Your current STS session appears to be for \"${AWS_PROFILE}\")"
 	exit 1
 fi
 
