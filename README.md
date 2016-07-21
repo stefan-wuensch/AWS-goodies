@@ -38,3 +38,21 @@ directory. The directory will be created with a unique name, and will
 be automatically removed (along with all the contents) when the script
 completes. Note that the "EXIT" being trapped will catch any exit of the 
 script that includes this code - not just user-generated signals like ^C.
+
+
+
+make-AWS-CF-params-skeleton.py
+-------------------------------
+This script takes a JSON AWS CloudFormation Template on STDIN (from a pipe or similar) 
+and generates a JSON parameters skeleton from the Parameters of the template.
+This can be used to create a CloudFormation Parameters file for input to the 
+AWS CLI. See the "aws cloudformation create-stack" example in the script.
+
+The only required arguments to create a stack from the CLI (which is why this 
+is so cool) are:
+
+* --stack-name
+* --template-body
+* --parameters
+
+_Using the AWS web Console to enter stack parameters is poor form! Don't do it!_
