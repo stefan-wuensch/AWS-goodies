@@ -109,7 +109,7 @@ while read -r local remote ; do
 		diffExit=1
 	fi
 	cumulativeDiffExit=$(( cumulativeDiffExit + diffExit ))
-	[[ ${diffExit} -ne 0 ]] && echo -e "\n# To upload ONLY this file to S3, run the following:" &&
+	[[ ${diffExit} -ne 0 ]] && echo -e "\n# To upload ONLY this file to S3, run the following while in $( /bin/pwd -P )/" &&
 		echo "aws s3 cp ${local} ${remote}"
 	echo -e "\n\n"
 done < <( aws s3 sync . "${S3_BUCKET_LOCATION}" --dryrun 2>&1 | tr '\r' '\n' | grep -i upload | awk '{print $3,$5}' )
