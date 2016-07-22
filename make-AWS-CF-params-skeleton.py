@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 
-###############################################################################
+###################################################################################################
 # make-AWS-CF-params-skeleton.py
 # 
 # by Stefan Wuensch 2016-07-21
@@ -20,7 +20,10 @@
 # Additional Reading:
 #   https://blogs.aws.amazon.com/application-management/post/Tx1A23GYVMVFKFD/Passing-Parameters-to-CloudFormation-Stacks-with-the-AWS-CLI-and-Powershell
 # 
-###############################################################################
+# 
+# To Do: Add file input instead of just stdin
+# 
+###################################################################################################
 # 
 # Example:
 #   This uses an online sample Amazon CF JSON Template. It is retrieved via curl and processed by this script.
@@ -67,9 +70,13 @@
 # 
 # 
 # 
-###############################################################################
+###################################################################################################
 
-import sys, json
+import sys, json, select
+
+if not select.select( [ sys.stdin, ], [], [], 0.0 )[ 0 ]:
+	print "Error: This program expects a CloudFormation JSON Template on STDIN. (For example, via a pipe.)"
+	sys.exit( 1 )
 
 inputJSON = json.loads( sys.stdin.read() )[ 'Parameters' ]
 parameters = []
