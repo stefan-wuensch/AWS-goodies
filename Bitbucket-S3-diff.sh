@@ -49,10 +49,13 @@
 S3_BUCKET_LOCATION_FILE=".s3-location.txt"
 #############################################################################################################
 
+# Capture signals and force an exit because the AWS CLI seems to have its own signal handling that gets in the way
+trap "exit 127" EXIT HUP INT QUIT TERM
 
 # Check our inputs. Note we're only taking line 1 of the file.
 [[ ! -f "${S3_BUCKET_LOCATION_FILE}" ]] && echo "Error: Where is the ${S3_BUCKET_LOCATION_FILE}?" && exit 1
-[[ $( wc -l "${S3_BUCKET_LOCATION_FILE}" | awk '{print $1}' ) -ne 1 ]] && echo "Warning: only using line 1 of ${S3_BUCKET_LOCATION_FILE}"
+[[ $( wc -l "${S3_BUCKET_LOCATION_FILE}" | awk '{print $1}' ) -eq 0 ]] && echo "Error: $( /bin/pwd -P )/${S3_BUCKET_LOCATION_FILE} appears empty" && exit 2
+[[ $( wc -l "${S3_BUCKET_LOCATION_FILE}" | awk '{print $1}' ) -gt 1 ]] && echo "Warning: only using line 1 of ${S3_BUCKET_LOCATION_FILE}"
 S3_BUCKET_ACCOUNT="$( head -1 ${S3_BUCKET_LOCATION_FILE} | cut -d, -f1 )"
 S3_BUCKET_LOCATION="$( head -1 ${S3_BUCKET_LOCATION_FILE} | cut -d, -f2 )"
 [[ -z "${S3_BUCKET_ACCOUNT}" ]] && echo "Error: Didn't get an AWS Account name in ${S3_BUCKET_LOCATION_FILE}"  && exit 1
