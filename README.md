@@ -29,6 +29,16 @@ Bitbucket-S3-diff.zsh
 Script which compares a local repo check-out to a remote S3 bucket location. Displays file differences
 and gives command examples to sync / upload.
 
+See detailed notes in script comments.
+
+**New feature 2016-08-10**: Added command option arg '--sync-metadata' which will copy from local up to
+S3 if (and **only if**) a file's contents are exactly the same in both locations and only the 
+metadata differs. In other words: if the timestamp is the only thing that makes "aws s3 sync"
+think the file is different - and the contents are actually 100% the same - then this new option will
+copy to S3 (even though it's the same thing there already) simply so that the metadata will be the same
+and additional runs of this script will not show the file.
+
+
 
 
 Generic_Safe_Temp_Dir_Function.sh
