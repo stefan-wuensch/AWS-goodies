@@ -3,7 +3,9 @@
 #############################################################################################################
 # Bitbucket-S3-diff.sh
 # 
-# by Stefan Wuensch, June 2016
+# by Stefan Wuensch, Summer 2016
+# 
+# Usage: Bitbucket-S3-diff.sh [ --sync-metadata ]
 # 
 # This is all a big wrapper around a cool / sneaky way of running "diff" to compare a local directory
 # against a remote location inside an AWS S3 bucket. The S3_BUCKET_LOCATION_FILE tells this script
@@ -49,17 +51,42 @@
 S3_BUCKET_LOCATION_FILE=".s3-location.txt"
 #############################################################################################################
 
-# Capture signals and force an exit because the AWS CLI seems to have its own signal handling that gets in the way
-trap "exit 127" EXIT HUP INT QUIT TERM
+export PATH=/bin:/usr/bin:/usr/local/bin	# for safety
+
+# This flag from the command arg will determine whether or not we
+# copy from local to S3 if the only thing that differs is the metadata.
+ALLOWED_ARG="--sync-metadata"
+COPY_FOR_METADATA="N"
+if [[ $# -ne 0 ]] ; then
+	if [[ "${1}" == "${ALLOWED_ARG}" ]] ; then
+		COPY_FOR_METADATA="Y"
+	else
+		echo "Usage: $0 [ ${ALLOWED_ARG} ]"
+		exit 1
+	fi
+fi
+
 
 # Check our inputs. Note we're only taking line 1 of the file.
 [[ ! -f "${S3_BUCKET_LOCATION_FILE}" ]] && echo "Error: Where is the ${S3_BUCKET_LOCATION_FILE}?" && exit 1
 [[ $( wc -l "${S3_BUCKET_LOCATION_FILE}" | awk '{print $1}' ) -eq 0 ]] && echo "Error: $( /bin/pwd -P )/${S3_BUCKET_LOCATION_FILE} appears empty" && exit 2
-[[ $( wc -l "${S3_BUCKET_LOCATION_FILE}" | awk '{print $1}' ) -gt 1 ]] && echo "Warning: only using line 1 of ${S3_BUCKET_LOCATION_FILE}"
+[[ $( wc -l "${S3_BUCKET_LOCATION_FILE}" | awk '{print $1}' ) -gt 1 ]] && echo "# Warning: only using line 1 of ${S3_BUCKET_LOCATION_FILE}"
 S3_BUCKET_ACCOUNT="$( head -1 ${S3_BUCKET_LOCATION_FILE} | cut -d, -f1 )"
 S3_BUCKET_LOCATION="$( head -1 ${S3_BUCKET_LOCATION_FILE} | cut -d, -f2 )"
 [[ -z "${S3_BUCKET_ACCOUNT}" ]] && echo "Error: Didn't get an AWS Account name in ${S3_BUCKET_LOCATION_FILE}"  && exit 1
 [[ -z "${S3_BUCKET_LOCATION}" ]] && echo "Error: Didn't get an S3 bucket path in ${S3_BUCKET_LOCATION_FILE}"   && exit 1
+
+
+# Capture signals and force an exit because the AWS CLI seems to have its own signal handling that gets in the way
+trap "exit 127" EXIT HUP INT QUIT TERM
+
+# Now just for extra safety, give confirmation that we are going to actually 
+# run a 'cp' operation if there's no differences in the file contents and
+# it's only the metadata which is different. (and if the command arg was given)
+if [[ "${COPY_FOR_METADATA}" == "Y" ]] ; then
+	echo -e "\n# Got argument \"${ALLOWED_ARG}\" so copy to S3 _will be run_ if metadata is the only difference. Hit ^C now if you don't want this!"
+	printf "# 5..." ; sleep 2 ; printf "4..." ; sleep 2 ; printf "3..." ; sleep 2 ; printf "2..." ; sleep 2 ; printf "1..." ; sleep 2 ; echo "Go."
+fi
 
 
 # Now check to see if we can access the S3 location.
@@ -84,9 +111,9 @@ echo -e "#######################################################################
 echo -e "\n# Doing a diff based on a dry run of the following \"aws s3 sync\":"
 echo -e "aws s3 sync $( /bin/pwd -P ) ${S3_BUCKET_LOCATION} --dryrun"
 echo -e "# (Run that command without the \"--dryrun\" to upload all the following changes to S3.)"
-echo -e "\n# Note: Remote file may be reported by diff as '-' if not a text file"
-echo -e "\n# NOTE: The \"aws s3 sync\" and \"aws s3 cp\" examples are for copying _TO_ S3."
-echo -e "# To copy _FROM_ S3 to local, reverse the arguments.\n"
+echo -e "# Note: Remote file may be reported by diff as '-' if not a text file"
+# echo -e "\n# NOTE: The \"aws s3 sync\" and \"aws s3 cp\" examples are for copying _TO_ S3."
+# echo -e "# To copy _FROM_ S3 to local, reverse the arguments.\n"
 
 cumulativeDiffExit=0 		# This tracks our overall sucess / failure
 foundAnyS3Differences="N" 	# This tracks if the "s3 sync" actually found anything different
@@ -106,7 +133,16 @@ while read -r local remote ; do
 	if [[ ${?} -eq 0 ]] ; then
 		aws s3 cp "${remote}" - 2>/dev/null | diff "${local}" -	# The real work is done right here
 		diffExit=${?}
-		[[ ${diffExit} -eq 0 ]] && echo -e "# Same (only the metadata differs)\n"
+		if [[ ${diffExit} -eq 0 ]] ; then
+			echo -e "# Same (only the metadata differs)\n"
+			if [[ "${COPY_FOR_METADATA}" == "Y" ]] ; then
+				cpCommand="aws s3 cp ${local} ${remote}"
+				echo "# Doing \"${cpCommand}\""
+				sleep 3
+				printf "# "		# This makes sure the output from the "s3 cp" looks like a comment
+				eval "${cpCommand}"
+			fi
+		fi
 	else
 		echo -e "# Remote object not found"
 		diffExit=1
@@ -126,5 +162,9 @@ if [[ ${cumulativeDiffExit} -eq 0 ]] ; then
 		echo -e "# This will update S3 so subsequent runs of this script won't show all the long output as just now.\n"
 	fi
 fi
+
+# Remove the trap to exit as specified.
+trap "" EXIT HUP INT QUIT TERM
+
 [[ ${cumulativeDiffExit} -eq 0 ]] && exit 0
 exit 1
