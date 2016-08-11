@@ -84,7 +84,8 @@ trap "exit 127" EXIT HUP INT QUIT TERM
 # run a 'cp' operation if there's no differences in the file contents and
 # it's only the metadata which is different. (and if the command arg was given)
 if [[ "${COPY_FOR_METADATA}" == "Y" ]] ; then
-	echo -e "\n# Got argument \"${ALLOWED_ARG}\" so copy to S3 _will be run_ if metadata is the only difference. Hit ^C now if you don't want this!"
+	echo -e "\n# Got argument \"${ALLOWED_ARG}\" so copy to S3 _will be run_ if metadata is the ONLY difference. (Meaning, the file contents are identical.)"
+	echo -e "# Hit ^C now if you don't want this!"
 	printf "# 5..." ; sleep 2 ; printf "4..." ; sleep 2 ; printf "3..." ; sleep 2 ; printf "2..." ; sleep 2 ; printf "1..." ; sleep 2 ; echo "Go."
 fi
 
