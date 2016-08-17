@@ -94,6 +94,9 @@ for parameter in parameters:
 	if 'Type' in inputJSON[ parameter ]:
 		thisParam[ 'ParameterValue' ] += inputJSON[ parameter ][ 'Type' ] + " - "
 
+	if 'Default' in inputJSON[ parameter ]:
+		thisParam[ 'ParameterValue' ] += 'Default:\'' + inputJSON[ parameter ][ 'Default' ] + "\' - "
+
 	if 'AllowedValues' in inputJSON[ parameter ]:
 		thisParam[ 'ParameterValue' ] += 'Allowed:[' + ', '.join( inputJSON[ parameter ][ 'AllowedValues' ] ) + '] - '
 
