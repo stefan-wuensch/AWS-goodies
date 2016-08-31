@@ -51,6 +51,17 @@ script that includes this code - not just user-generated signals like ^C.
 
 
 
+find-CF-stack-for-AWS-resource.sh
+-------------------------------------
+This script is a really simple wrapper around an AWS query. If you don't know
+which CloudFormation Stack created a particular resource in your AWS account,
+it can be almost impossible to find the stack. This is particularly the case for 
+CloudWatch Alarms, because Alarms do not have the ability to be tagged. (As of 2016-08-31)
+Other AWS resources can be tagged with details like the Stack Name, but 
+in case they are not tagged this script can be used.
+
+
+
 make-AWS-CF-params-skeleton.py
 -------------------------------
 This script takes a JSON AWS CloudFormation Template on STDIN (from a pipe or similar) 
