@@ -118,6 +118,7 @@ echo -e "# Note: Remote file may be reported by diff as '-' if not a text file"
 
 cumulativeDiffExit=0 		# This tracks our overall sucess / failure
 foundAnyS3Differences="N" 	# This tracks if the "s3 sync" actually found anything different
+remoteObjectNotFound="N"	# This tracks if anything is missing from the S3 bucket
 
 # Here we go! First thing is to run an "s3 sync" dry run. Then we parse the output from that.
 # Note we're adusting the output with 'tr' because the usual display of "s3 sync" over-writes
@@ -146,7 +147,7 @@ while read -r local remote ; do
 		fi
 	else
 		echo -e "# Remote object not found"
-		diffExit=1
+		remoteObjectNotFound="Y"		# This will be evaluated later to see if it's only missing things in S3
 	fi
 	cumulativeDiffExit=$(( cumulativeDiffExit + diffExit ))
 	[[ ${diffExit} -ne 0 ]] && echo -e "\n# To upload ONLY this file to S3, run the following while in $( /bin/pwd -P )/" &&
@@ -155,9 +156,14 @@ while read -r local remote ; do
 done < <( aws s3 sync . "${S3_BUCKET_LOCATION}" --dryrun 2>&1 | tr '\r' '\n' | grep -i upload | awk '{print $3,$5}' )
 
 if [[ ${cumulativeDiffExit} -eq 0 ]] ; then
-	echo -e "# ************ There were no differences found! ************ \n"
+	echo -e "# ************ There were no file content differences found! ************ \n"
 	if [[ "${foundAnyS3Differences}" != "N" ]] ; then
-		echo -e "# Since all the objects above differ _only_ by metadata and NOT by content,"
+		if [[ "${remoteObjectNotFound}" != "N" ]] ; then
+			echo -e "# Since all the objects above are only listed because they are not in S3,"
+			echo -e "# or they differ _only_ by metadata and NOT by content,"
+		else
+			echo -e "# Since all the objects above differ _only_ by metadata and NOT by content,"
+		fi
 		echo -e "# you can safely run the following sync command. (You need to remove the \"--dryrun\" yourself.)"
 		echo -e "aws s3 sync $( /bin/pwd -P ) ${S3_BUCKET_LOCATION} --dryrun"
 		echo -e "# This will update S3 so subsequent runs of this script won't show all the long output as just now.\n"
