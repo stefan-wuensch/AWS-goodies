@@ -92,16 +92,16 @@ for parameter in parameters:
 	thisParam[ 'ParameterValue' ] = "REPLACE THIS WITH: "	# We will be appending to this string with the additional stuff below
 
 	if 'Type' in inputJSON[ parameter ]:
-		thisParam[ 'ParameterValue' ] += inputJSON[ parameter ][ 'Type' ] + " - "
+		thisParam[ 'ParameterValue' ] += str( inputJSON[ parameter ][ 'Type' ] ) + " - "
 
 	if 'Default' in inputJSON[ parameter ]:
-		thisParam[ 'ParameterValue' ] += 'Default:\'' + inputJSON[ parameter ][ 'Default' ] + "\' - "
+		thisParam[ 'ParameterValue' ] += 'Default:\'' + str( inputJSON[ parameter ][ 'Default' ] ) + "\' - "
 
 	if 'AllowedValues' in inputJSON[ parameter ]:
 		thisParam[ 'ParameterValue' ] += 'Allowed:[' + ', '.join( inputJSON[ parameter ][ 'AllowedValues' ] ) + '] - '
 
 	if 'Description' in inputJSON[ parameter ]:
-		thisParam[ 'ParameterValue' ] += inputJSON[ parameter ][ 'Description' ]
+		thisParam[ 'ParameterValue' ] += str( inputJSON[ parameter ][ 'Description' ] )
 
 	outputJSON.append( thisParam )
 
