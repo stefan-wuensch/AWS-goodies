@@ -105,4 +105,4 @@ for parameter in parameters:
 
 	outputJSON.append( thisParam )
 
-print "\n", json.dumps( outputJSON, sort_keys = True, indent = 4 ), "\n\n"
+print json.dumps( outputJSON, sort_keys = True, indent = 4 )

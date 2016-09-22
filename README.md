@@ -61,6 +61,17 @@ Other AWS resources can be tagged with details like the Stack Name, but
 in case they are not tagged this script can be used.
 
 
+find-S3-large-files.sh
+-----------------------------
+This script will scan one or more S3 buckets and show you:
+
+1. A summary of the total number of objects (files) in the bucket
+2. The total number of bytes in use in the entire bucket
+3. The timestamp of the oldest file in the bucket (regardless of size)
+4. The timestamp of the newest file in the bucket (regardless of size)
+5. The top __8__ files larger than __50__ MB. (Each constraint value can be customized by changing a variable in the script.)
+
+
 
 make-AWS-CF-params-skeleton.py
 -------------------------------
