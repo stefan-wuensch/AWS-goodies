@@ -148,6 +148,8 @@ while read -r local remote ; do
 	else
 		echo -e "# Remote object not found"
 		remoteObjectNotFound="Y"		# This will be evaluated later to see if it's only missing things in S3
+# To-do - reconcile this next line - has an issue with remote-object-not-found before or after a file with differences
+# 		diffExit=1				# This is to get the output printed with the "aws s3 cp" syntax for this particular object
 	fi
 	cumulativeDiffExit=$(( cumulativeDiffExit + diffExit ))
 	[[ ${diffExit} -ne 0 ]] && echo -e "\n# To upload ONLY this file to S3, run the following while in $( /bin/pwd -P )/" &&
