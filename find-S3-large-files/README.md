@@ -1,5 +1,3 @@
-[TOC]
-
 # find-S3-large-files.sh
 
 This script will scan one or more S3 buckets and show you:
