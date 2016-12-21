@@ -151,6 +151,7 @@ function aws_session() {
  	export AWS_SESSION_EXPIRES=$( echo ${AWS_SESSION_EXPIRES_ISO_8601} | python -c "import calendar, sys; from datetime import datetime; print calendar.timegm(datetime.strptime( sys.stdin.read(), '%Y-%m-%dT%H:%M:%SZ\n').timetuple())" )
 	export AWS_SECRET_ACCESS_KEY=$(echo "$sts" | cut -f 4)
 	export AWS_SESSION_TOKEN=$(echo "$sts" | cut -f 5)
+	export AWS_SECURITY_TOKEN=$(echo "$sts" | cut -f 5)	# This variable is deprecated in favor of AWS_SESSION_TOKEN but included here for compatibility with ancient versions of Boto.
 	export AWS_PROFILE="${aws_profile}"
 	export AWS_USERNAME="${username}"
 	echo "Success: ${AWS_USERNAME}@${AWS_PROFILE} expires $( echo ${AWS_SESSION_EXPIRES} | perl -pe 's/(\d{6,10})/localtime($1)/eg' )."
