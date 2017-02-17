@@ -17,10 +17,10 @@
 # 
 # 
 # Additional Reading:
-#   https://blogs.aws.amazon.com/application-management/post/Tx1A23GYVMVFKFD/Passing-Parameters-to-CloudFormation-Stacks-with-the-AWS-CLI-and-Powershell
+#   https://aws.amazon.com/blogs/devops/passing-parameters-to-cloudformation-stacks-with-the-aws-cli-and-powershell/
 # 
 # 
-# To Do: Add file input instead of just stdin
+# To Do: Add file input/output instead of just stdin/stdout
 # 
 ###################################################################################################
 # 
