@@ -1,8 +1,11 @@
 Stuff to make your life easier when working with AWS.
 ==================
 
-
 See also https://bitbucket.org/srw812/aws-goodies-in-bitbucket/src
+
+
+Scripts
+==================
 
 
 Check_admins_for_MFA
@@ -51,14 +54,69 @@ script that includes this code - not just user-generated signals like ^C.
 
 
 
-find-CF-stack-for-AWS-resource.sh
--------------------------------------
+
+## final-build-with-EFS.sh
+
+A bash script for auto-configuring and mounting EFS (NFS) export during instance build process.
+
+
+
+
+## find-CF-stack-for-AWS-resource.sh
+
+
+### Description
 This script is a really simple wrapper around an AWS query. If you don't know
 which CloudFormation Stack created a particular resource in your AWS account,
-it can be almost impossible to find the stack. This is particularly the case for 
+it can be almost impossible to find the stack. 
+
+This is particularly the case for 
 CloudWatch Alarms, because Alarms do not have the ability to be tagged. (As of 2016-08-31)
+
 Other AWS resources can be tagged with details like the Stack Name, but 
 in case they are not tagged this script can be used.
+
+
+### Usage examples
+
+__Usage__: `find-CF-stack-for-AWS-resource.sh "the name of an AWS resource"`
+
+__Requires__: The name ("Physical Resource ID") of an AWS resource
+
+__Output__: The name of a CloudFormation Stack (if found) which created / manages that resource,
+or an AWS CLI error message which includes "Stack for {resource name} does not exist"
+
+#### Example of the not-found language
+```
+$ find-CF-stack-for-AWS-resource.sh "not-a-real-resource just an example"
+An error occurred (ValidationError) when calling the DescribeStackResources operation: Stack for not-a-real-resource just an example does not exist
+```
+
+#### Example of searching for the stack that created an EC2 instance
+```
+$ find-CF-stack-for-AWS-resource.sh i-d01e7d4d
+museDbDeploy-dev-asglc-cf
+```
+
+#### Example of searching for the stack that created a CloudWatch Alarm
+```
+$ find-CF-stack-for-AWS-resource.sh "fastcat.faoapps.fas.harvard.edu prod elb-request-count-high-cw-alarm"
+fastcat-prod-elb-cw-cf
+```
+
+#### Example of searching for a stack that does not exist
+In this case there is __no__ stack which created this Alarm! __This particular Alarm is stand-alone.__ It was 
+not created by CloudFormation. What's different here from the first not-found example above? In this case
+we know the Alarm resource does exist - therefore this tells us there's no CF Stack. You need to be absolutely
+sure you are giving a valid arg to the command, and quoting it as necessary.
+```
+$ find-CF-stack-for-AWS-resource.sh "qlik.huit.harvard.edu qlikprdm RDS FreeStorageSpace"
+An error occurred (ValidationError) when calling the DescribeStackResources operation: Stack for qlik.huit.harvard.edu qlikprdm RDS FreeStorageSpace does not exist
+```
+
+
+
+
 
 
 find-S3-large-files.sh
