@@ -97,7 +97,7 @@
 # First thing safety-check any input environment variables
 [[ "${DEBUG}"   != "false" ]] && [[ "${DEBUG}"   != "true" ]] && DEBUG="false"
 [[ "${VERBOSE}" != "false" ]] && [[ "${VERBOSE}" != "true" ]] && VERBOSE="false"
-# 
+#
 # Now we know they are set and safe, so...
 # (Setting Debug also gives you Verbose.)
 ${DEBUG}   && { echo "Debug output On." ; set -x ; VERBOSE="true" ; }
