@@ -1,0 +1,128 @@
+#!/usr/bin/env zsh
+
+# aws_creds
+#
+# Stefan Wuensch Spring 2017
+#
+# Usage:   aws_creds AWS-account-name [ web ]
+#
+#
+# Requirements:
+# 	• Mac OS (secrets are stored in Mac OS Keychain)
+# 	• oathtool - http://www.nongnu.org/oath-toolkit/ or from Homebrew
+# 	• aws_session function from
+# 		https://github.com/stefan-wuensch/AWS-goodies/blob/master/MFA-STS_functions/AWS_STS_functions.zsh
+# 	• AWS CLI tools - "pip install awscli" is recommended
+#
+#
+#
+# NOTE: This script is expected to be _sourced_ NOT EXECUTED.
+# This script needs to set environmental variables in the shell
+# that is running this, and the only way to do that is to source
+# this script. Otherwise the exported variables will only be in the
+# subshell which is running this.
+#
+# Example usage:
+# 	% source /your/path/to/aws_creds some-AWS-account web
+#
+# Alternative usage: In your shell init script, add something like this:
+# 	alias aws_creds='source /your/path/to/aws_creds'
+# Then you can call this script via the alias:
+# 	% aws_creds some-AWS-account
+# 	% aws_creds some-other-AWS-account web
+#
+# Still another option: after creating the alias above, create an additional
+# alias for each AWS account:
+# 	alias some-AWS-account='aws_creds some-AWS-account'
+# 	alias some-other-AWS-account='aws_creds some-other-AWS-account'
+# Then you can run this script WITH THE FIRST ARG with one command!! W00t!
+# 	% some-AWS-account
+# 	% some-other-AWS-account web
+# This is a very worthwhile thing to set up - even though it could be
+# a ton of aliases - because you can then tab-complete any AWS account
+# name to initialize the STS session. Very handy and time-saving!
+#
+
+
+
+####################################################################################################
+# Special handler for "exiting" this script
+# Since we're sourcing it we can't "exit".
+# Since we might be setting "-x" for debugging, we have to undo that.
+bail() {
+	set +x
+	if [[ -z "${1}" ]] || [[ $1 -gt 1 ]] ; then
+		>&2 echo -e "\nBailing out! Something was not right.\n"
+	fi
+	kill -INT $$	# Stop executing this script. Since we're sourcing this we can't 'exit'
+}
+####################################################################################################
+
+
+
+####################################################################################################
+# Keep configuration items out of the checked-in code!
+source $HOME/bin/aws_creds_mappings.zsh
+
+# This is an example of what's happening in the aws_creds_mappings.zsh script:
+#
+# typeset -A password_mappings
+# password_mappings["awsAccountName"]="Some keychain item name of an AWS Console password"
+# password_mappings["AnotherAWSaccountName"]="Some OTHER keychain item name of an AWS Console password"
+#
+# typeset -A seed_mappings
+# seed_mappings["awsAccountName"]="Some keychain item name of an AWS MFA seed value"
+# seed_mappings["AnotherAWSaccountName"]="Some OTHER keychain item name of an AWS MFA seed value"
+#
+# In this script the value of each key-value pair should be what's in the "Where" field of the
+# Keychain item. That's because this script uses "security find-generic-password -s" and the
+# "-s" arg specifies the "service" name (as described in the man page) but that's actually
+# the "Where" in the Keychain Access.app
+# For more see https://developer.apple.com/legacy/library/documentation/Darwin/Reference/ManPages/man1/security.1.html
+####################################################################################################
+
+
+which oathtool >/dev/null 2>&1 || >&2 echo "Warning: Can't find \"oathtool\". You will not be able to \
+generate or use MFA one-time-passwords with this script. Get \"oathtool\" with Homebrew or http://www.nongnu.org/oath-toolkit/"
+
+# Need at least one arg, the AWS account name.
+[[ -z "${1}" ]] && { >&2 echo "Usage: ${0} aws-account-name [ web ]" ; bail 1 ; }
+
+account="${1}"
+
+# Now make sure we have a key-value in the arrays for the given account name.
+if ! passwordName="${password_mappings[\"${account}\"]}" || [[ -z "${passwordName}" ]] ; then
+	>&2 echo "Can't find the account \"${account}\" console password in the \"password_mappings\" array!"
+	bail 1
+fi
+if ! seedName="${seed_mappings[\"${account}\"]}" || [[ -z "${seedName}" ]] ; then
+	>&2 echo "Can't find the account \"${account}\" MFA seed value in the \"seed_mappings\" array!"
+	bail 1
+fi
+
+# Now try getting the Keychain item for the given name. If it's not there, we can't proceed!
+if ! security find-generic-password -s "${passwordName}" >/dev/null ; then
+	>&2 echo "Can't find the account \"${account}\" console password in your Mac Keychain!"
+	bail 1
+fi
+if ! security find-generic-password -s "${seedName}" >/dev/null ; then
+	>&2 echo "Can't find the account \"${account}\" MFA seed value in your Mac Keychain!"
+	bail 1
+fi
+
+# If the arg 2 was given and it's "web" then send the password and MFA one-time-password
+# out to the Mac OS copy/paste buffer (the "Clipboard").
+# If there's no arg 2 or it's not "web" then initialize an STS session for AWS CLI use.
+case "${2}" in
+
+	web*) 	security find-generic-password -s "${passwordName}" -w | pbcopy
+		echo "${passwordName} password is ready in clipboard. Hit Return to continue."
+		read -s foo
+		oathtool --totp -b $( security find-generic-password -s "${seedName}" -w ) | pbcopy
+		echo "MFA value from ${seedName} is ready in clipboard."
+		;;
+	
+	*)	aws_session "${account}" $( oathtool --totp -b $( security find-generic-password -s "${seedName}" -w ) ) ;;
+
+esac
+

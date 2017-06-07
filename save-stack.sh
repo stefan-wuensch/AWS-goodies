@@ -4,7 +4,7 @@
 # save-stack.sh
 # by Stefan Wuensch, 2016-2017
 #
-# This script saves to JSON files everything about a running CloudFormation Stack
+# This script saves to files everything about a running CloudFormation Stack
 # that you would need to either re-create the stack from scratch, or simply update
 # the stack Parameters in a quick & simple way.
 #
@@ -24,19 +24,22 @@
 #   3) Python with the standard included JSON module to apply uniform formatting
 #   4) The script 'sort-AWS-CF-params.py' from "python_scripts" of this same repo
 #
-# Output on STDOUT: None     (unless DEBUG is set to "true")
+# Output on STDOUT: None  (unless ${VERBOSE} or ${DEBUG} is set to "true")
 #
-# Output to three files:   (these examples here use stack name "my-sample-stack")
+# Output to three files:   (these examples here use stack name "my-sample-stack" with a JSON template)
 #   1) my-sample-stack.template.json 		contains the CF Template of the Stack
 #   2) my-sample-stack.describe-stacks.json 	contains all the CF meta-data from the stack
 #   3) my-sample-stack.parameters.json 		contains the Parameters of the running stack, sorted
-#
+# If the template is YAML, the output file name for 1) would be "my-sample-stack.template.yaml"
 #
 # Note that the "sort-AWS-CF-params.py" script sorts the Parameters so you can
 # easily compare the JSON file to others. This allows you to compare (for example)
 # different tiers of the same application using just "diff" because the sort order
 # of Dev and Prod would be the same. Also the Python standard JSON formatting
-# is essential to being able to "diff" different JSON files.
+# is essential to being able to "diff" different JSON files. Sorting the Parameters
+# is not absolutely required, and if the "sort-AWS-CF-params.py" can't be found
+# then this script will continue just fine and still output a usable (but unsorted)
+# Parameters file.
 #
 # This script checked with https://www.shellcheck.net/
 #
@@ -86,12 +89,19 @@
 
 
 # Do we want extra output?
-# Only allowed values are: "true" or "false" - gets evaluated as an executable
-# Accept ${DEBUG} if set outside this script, but only if it's "true" or "false"
+# Only allowed values are: "true" or "false" - gets evaluated as an executable.
+# Accept ${VERBOSE} and ${DEBUG} if set outside this script, but only if "true" or "false"
 # Example:
-#    % DEBUG=true save-stack.sh some-stack-name
-[[ "${DEBUG}" != "false" ]] && [[ "${DEBUG}" != "true" ]] && DEBUG="false"
-${DEBUG} && { echo "Debug On." ; set -x ; }
+#    % VERBOSE=true save-stack.sh some-stack-name
+#
+# First thing safety-check any input environment variables
+[[ "${DEBUG}"   != "false" ]] && [[ "${DEBUG}"   != "true" ]] && DEBUG="false"
+[[ "${VERBOSE}" != "false" ]] && [[ "${VERBOSE}" != "true" ]] && VERBOSE="false"
+#
+# Now we know they are set and safe, so...
+# (Setting Debug also gives you Verbose.)
+${DEBUG}   && { echo "Debug output On." ; set -x ; VERBOSE="true" ; }
+${VERBOSE} && { echo "Verbose output On." ; }
 
 
 # Need to make sure this is NOT run as root, for extra safety.
@@ -128,9 +138,9 @@ DIRNAME=$( dirname "${0}" )
 
 # Each one of these items making the loop is a potential location of the sorting script we're trying to find.
 for try in "${JSONSORTER}" "./${JSONSORTER}" "../python_scripts/${JSONSORTER}" "${DIRNAME}/${JSONSORTER}" "${DIRNAME}/../python_scripts/${JSONSORTER}" ; do
-	${DEBUG} && echo "Trying ${try}"
+	${VERBOSE} && echo "Trying ${try}"
 	if which "${try}" >/dev/null 2>&1 ; then
-		${DEBUG} && echo "Yay! Found ${try}"
+		${VERBOSE} && echo "Yay! Found ${try}"
 		JSONSORTER="${try}"
 		break
 	fi
@@ -144,32 +154,54 @@ if ! which "${JSONSORTER}" >/dev/null 2>&1 ; then
 	( >&2 echo "See https://bitbucket.org/huitcloudservices/hcdo-common-utilities" )
 	JSONSORTER="cat"
 fi
-${DEBUG} && echo "Continuing with JSONSORTER=\"${JSONSORTER}\""
+${VERBOSE} && echo "Continuing with JSONSORTER=\"${JSONSORTER}\""
 
 
 # Time to make the donuts!!
 
-#1 Get the Template, extract only the TemplateBody, format it, and save it.
-${DEBUG} && echo "aws cloudformation get-template to ${STACK}.template.json"
-aws cloudformation get-template    --stack-name "${STACK}" | jq '.TemplateBody' | python -m json.tool > "${STACK}.template.json"
+#1 step - Get the Template, extract only the TemplateBody, format it, and save it.
+${VERBOSE} && echo "aws cloudformation get-template to ${STACK}.template"
+aws cloudformation get-template --stack-name "${STACK}" | jq '.TemplateBody' | python -m json.tool > "${STACK}.template"
 
-#2 Describe the Stack, format it, and save it.
-${DEBUG} && echo "aws cloudformation describe-stacks to ${STACK}.describe-stacks.json"
+# Now figure out if it's JSON or YAML, and act accordingly.
+case $( head -c1 "${STACK}.template" ) in
+
+	'{')	${VERBOSE} && echo "Template is JSON"
+		# We already have nicely-formatted JSON from the 'python -m json.tool' above, so nothing else needed...
+		# ...except to add the extension.
+		mv "${STACK}.template" "${STACK}.template.json" ;;
+
+	'"')	${VERBOSE} && echo "Template is YAML"
+		# The YAML coming out of the 'aws cloudformation get-template' call is stuffed into a JSON object,
+		# so we have to turn it back into readable YAML.
+		# This will: 1) edit in-place 2) drop leading quote 3) drop trailing quote
+		# 4) convert '\"' to '"' 5) drop extra trailing '\n' 6) change '\n' to actual newline
+		sed -i "" -e 's/^"//' -e 's/"$//' -e 's/\\"/"/g' -e 's/\\n$//' -e 's/\\n/\
+/g' "${STACK}.template"
+		mv "${STACK}.template" "${STACK}.template.yaml" ;;
+
+	*)	echo "Expected JSON or YAML, but ${STACK}.template doesn't look like either." ;;
+esac
+
+
+#2 step - Describe the Stack, format it, and save it.
+${VERBOSE} && echo "aws cloudformation describe-stacks to ${STACK}.describe-stacks.json"
 aws cloudformation describe-stacks --stack-name "${STACK}" | python -m json.tool > "${STACK}.describe-stacks.json"
 
-#3 Pull only the Parameters from the "describe-stacks" file, sort it, format it, and save it.
+
+#3 step - Pull only the Parameters from the "describe-stacks" file, sort it, format it, and save it.
 # Note: even though the JSON sorting script is Python, it doesn't output _exactly_ the same
 # JSON format as the Python JSON module "tool" - so we hit it with the same formatter for total consistency!
-${DEBUG} && echo "Pulling parameters only to ${STACK}.parameters.json"
+${VERBOSE} && echo "Pulling parameters only to ${STACK}.parameters.json"
 jq -c '.Stacks[].Parameters' "${STACK}.describe-stacks.json" | "${JSONSORTER}" | python -m json.tool > "${STACK}.parameters.json"
 
 
-${DEBUG} && echo "These files were just produced:" && ls -l "${STACK}."*
+${VERBOSE} && echo "These files were just produced:" && ls -l "${STACK}."*
 
 
 exit 0		# No matter what happened above, we're done.
 		# Since this script will output NOTHING to stdout if it runs successfully
-		# (and DEBUG="false") we will rely on any output from the AWS CLI and/or
+		# (and ${VERBOSE}=="false") we will rely on any output from the AWS CLI and/or
 		# jq and/or Python to tell us if anything failed.
 
 
@@ -184,6 +216,8 @@ exit 0		# No matter what happened above, we're done.
 # This was my original way of saving a stack - nothing more.
 # All the code above plus documentation was added to make this more
 # usable, understandable, repeatable, and helpful. :-)
+#
+# Note: this function doesn't yet handle YAML templates. To-do.
 
 function save-stack() {
 	aws cloudformation get-template    --stack-name "${1}" | jq '.TemplateBody' | python -m json.tool > "${1}.template.json"
