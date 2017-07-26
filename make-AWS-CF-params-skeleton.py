@@ -3,17 +3,21 @@
 ###################################################################################################
 # make-AWS-CF-params-skeleton.py
 # 
-# by Stefan Wuensch 2016-07-21
+# by Stefan Wuensch 2016-2017
 # 
-# Input: AWS CloudFormation JSON template on STDIN 
-#   Typically this means pipe the JSON to this script, such as 'cat' a local file
+# Input: AWS CloudFormation JSON or YAML template on STDIN.
+#   Typically this means pipe the JSON/YAML to this script, such as 'cat' a local file
 #   or "curl -s" an Amazon sample, or "aws s3 cp" to '-', or similar.
 # 
-# Output: JSON skeleton of CloudFormation Parameters file
+# Output: JSON skeleton of CloudFormation Parameters file.
+#   AWS CloudFormation (still) does not support parameters files in YAML,
+#   so this script will only output JSON - no matter what the input is.
 # 
-# Purpose: If you want to generate a CloudFormation Stack from a CF template and a separate 
+# Purpose: If you want to generate a CloudFormation Stack from a CF template and a separate
 #   JSON file for Parameters, this will generate the framework of the required Parameters in
-#   a JSON file which you can simply edit to fill in each ParameterValue.
+#   a JSON file which you can simply edit to fill in each ParameterValue. This makes it
+#   really easy to stand up a CF stack, because the output from this script shows you
+#   exactly what each Parameter Type must be, the allowed values, the default, etc.
 # 
 # 
 # Additional Reading:
@@ -63,26 +67,68 @@
 # ] 
 # 
 # 
-# If you were to save the output of the above example to a file named "example-params.json" (and put in 
+# If you were to save the output of the above example to a file named "example-params.json" (and put in
 #   valid ParameterValue entries) then you could:
 # 
 # % aws cloudformation create-stack --stack-name my-test-stack --template-body https://s3.amazonaws.com/cloudformation-templates-us-east-1/LAMP_Single_Instance.template --parameters file://example-params.json
 # 
-# 
-# 
+# See how easy that is? With this script you can start up a complex CloudFormation stack easily,
+# because each parameter to the stack is described in detail in the output of this script.
+#
 ###################################################################################################
 
-import sys, json, select
+import sys, json, yaml, select
 
 if not select.select( [ sys.stdin, ], [], [], 5 )[ 0 ]:		# Check for data, waiting 5 sec. max
-	print "Error: This program expects a CloudFormation JSON Template on STDIN. (For example, via a pipe.)"
+	print "Error: This program expects a CloudFormation JSON or YAML Template on STDIN. (For example, via a pipe.)"
 	sys.exit( 1 )
 
-inputJSON = json.loads( sys.stdin.read() )[ 'Parameters' ]
 parameters = []
 outputJSON = []
+isJSON = False
+isYAML = False
 
-for parameter in inputJSON:		# This is just so we can sort by parameter name
+
+# Do we get data in STDIN?
+try:
+	input = sys.stdin.read()
+except:
+	print "Error: This program expects a CloudFormation JSON or YAML Template on STDIN. (For example, via a pipe.)"
+	sys.exit( 1 )
+
+
+# Is it JSON? If not, move on.
+try:
+	input = json.loads( input )
+	isJSON = True
+except Exception:
+	# print "Input is not JSON."
+	pass
+
+
+# Is it YAML? NOTE: using "safe_load()" which is a best practice!
+if not isJSON:
+	try:
+		input = yaml.safe_load( input )
+		isYAML = True
+	except Exception:
+		# print "Input is not YAML."
+		pass
+
+if not isJSON and not isYAML:
+	print "Error: This program expects a CloudFormation JSON or YAML Template on STDIN. (For example, via a pipe.)"
+	sys.exit( 1 )
+
+try:
+	inputParameters = input[ 'Parameters' ]
+except:
+	print( 'Error: Did not find a "Parameters' + ( '":', ':"' )[ isYAML ] + ' section in the ' + ( 'JSON', 'YAML' )[ isYAML ] + ' input!' )
+	print( 'Make sure you are sending a CloudFormation Template into this script. If you are, check your ' + ( 'JSON', 'YAML' )[ isYAML ] + ' syntax.' )
+	print( "If your CF Template doesn't have Parameters, then you don't need to use this script!" )
+	sys.exit( 1 )
+
+
+for parameter in inputParameters:	# This is just so we can sort by parameter name
 	parameters.append( parameter )
 parameters.sort()
 
@@ -91,17 +137,17 @@ for parameter in parameters:
 	thisParam[ 'ParameterKey' ] = parameter
 	thisParam[ 'ParameterValue' ] = "REPLACE THIS WITH: "	# We will be appending to this string with the additional stuff below
 
-	if 'Type' in inputJSON[ parameter ]:
-		thisParam[ 'ParameterValue' ] += str( inputJSON[ parameter ][ 'Type' ] ) + " - "
+	if 'Type' in inputParameters[ parameter ]:
+		thisParam[ 'ParameterValue' ] += str( inputParameters[ parameter ][ 'Type' ] ) + " - "
 
-	if 'Default' in inputJSON[ parameter ]:
-		thisParam[ 'ParameterValue' ] += 'Default:\'' + str( inputJSON[ parameter ][ 'Default' ] ) + "\' - "
+	if 'Default' in inputParameters[ parameter ]:
+		thisParam[ 'ParameterValue' ] += 'Default:\'' + str( inputParameters[ parameter ][ 'Default' ] ) + "\' - "
 
-	if 'AllowedValues' in inputJSON[ parameter ]:
-		thisParam[ 'ParameterValue' ] += 'Allowed:[' + ', '.join( inputJSON[ parameter ][ 'AllowedValues' ] ) + '] - '
+	if 'AllowedValues' in inputParameters[ parameter ]:
+		thisParam[ 'ParameterValue' ] += 'Allowed:[' + ', '.join( inputParameters[ parameter ][ 'AllowedValues' ] ) + '] - '
 
-	if 'Description' in inputJSON[ parameter ]:
-		thisParam[ 'ParameterValue' ] += str( inputJSON[ parameter ][ 'Description' ] )
+	if 'Description' in inputParameters[ parameter ]:
+		thisParam[ 'ParameterValue' ] += str( inputParameters[ parameter ][ 'Description' ] )
 
 	outputJSON.append( thisParam )
 
