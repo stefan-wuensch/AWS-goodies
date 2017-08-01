@@ -2,24 +2,35 @@
 
 # check_aws_access_keys.sh
 # Stefan Wuensch, 2017-07-26
-# 
-# This takes all the "profile" entries from your ~/.aws/config file and outputs the
+#
+# Usage: check_aws_access_keys.sh [ name-of-AWS-config-profile ]
+#
+# Requires: AWS CLI
+#
+# This takes "profile" entries from your ~/.aws/config file and outputs the
 # IAM user name _and_ the AWS Account Name for each profile. In other words, you
 # can give it a bunch of keys and it will tell you the username and acccount name
 # if you don't know them! This is handy because sometimes you don't want to name
-# the "profile" in the config file the same as the AWS Account name or username, 
+# the "profile" in the config file the same as the AWS Account name or username,
 # and over time you might forget which key is which! (I have done that!)
-# 
+#
 # If there's an error getting the username or the account name (or both) the
-# string "error" will replace the item that could not be found. If you get 
-# "error@error" for output, it most likely means that Access Key has been 
+# string "error" will replace the item that could not be found. If you get
+# "error@error" for output, it most likely means that Access Key has been
 # disabled / revoked.
-# 
+#
+# If no argument is given, this will grab all "profile" entries from your ~/.aws/config
+# file. An optional single argument can be given if you want to check only
+# that profile.
+#
 
+# Grab everything from the AWS CLI config, except if it's commented out with a leading ';'
+profiles=$( grep profile ~/.aws/config | grep -v '^;' | sed -e 's/^.*profile //g' | cut -d\] -f1 | sort | uniq )
 
-profiles=$( grep profile ~/.aws/config | sed -e 's/^.*profile //g' | cut -d\] -f1 | sort | uniq )
+# If we get an arg (and only one) use it instead of the list of all profiles.
+[[ $# -eq 1 ]] && profiles="${1}"
 
-for n in $( echo $profiles ) ; do 
+for n in $( echo $profiles ) ; do
 	username=$( aws iam get-user --query User.UserName --output=text --profile=$n 2>/dev/null ) || username="error"
 	printf "$n : ${username}@"
 	( aws iam list-account-aliases --profile $n --output text 2>/dev/null || echo eek error ) | awk '{print $2}'
