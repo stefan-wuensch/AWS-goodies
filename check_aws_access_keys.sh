@@ -23,6 +23,10 @@
 # file. An optional single argument can be given if you want to check only
 # that profile.
 #
+# See also:
+# http://docs.aws.amazon.com/cli/latest/userguide/cli-multiple-profiles.html
+# http://docs.aws.amazon.com/cli/latest/userguide/cli-config-files.html
+#
 
 # Grab everything from the AWS CLI config, except if it's commented out with a leading ';'
 profiles=$( grep profile ~/.aws/config | grep -v '^;' | sed -e 's/^.*profile //g' | cut -d\] -f1 | sort | uniq )
