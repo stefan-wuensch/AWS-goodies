@@ -77,78 +77,78 @@
 #
 ###################################################################################################
 
-import sys, json, yaml, select
+import sys, json, yaml, select, logging
 
 if not select.select( [ sys.stdin, ], [], [], 5 )[ 0 ]:		# Check for data, waiting 5 sec. max
-	print "Error: This program expects a CloudFormation JSON or YAML Template on STDIN. (For example, via a pipe.)"
+	print( "Error: This program expects a CloudFormation JSON or YAML Template on STDIN. (For example, via a pipe.)" )
 	sys.exit( 1 )
 
 parameters = []
-outputJSON = []
-isJSON = False
-isYAML = False
+output_json = []
+is_json = False
+is_yaml = False
 
 
 # Do we get data in STDIN?
 try:
-	input = sys.stdin.read()
+	input_stdin = sys.stdin.read()
 except:
-	print "Error: This program expects a CloudFormation JSON or YAML Template on STDIN. (For example, via a pipe.)"
+	print( "Error: This program expects a CloudFormation JSON or YAML Template on STDIN. (For example, via a pipe.)" )
 	sys.exit( 1 )
 
 
 # Is it JSON? If not, move on.
 try:
-	input = json.loads( input )
-	isJSON = True
+	input_loaded = json.loads( input_stdin )
+	is_json = True
 except Exception:
-	# print "Input is not JSON."
-	pass
+	logging.debug( "Input is not JSON." )
 
 
 # Is it YAML? NOTE: using "safe_load()" which is a best practice!
-if not isJSON:
+if not is_json:
 	try:
-		input = yaml.safe_load( input )
-		isYAML = True
+		input_loaded = yaml.safe_load( input_stdin )
+		is_yaml = True
 	except Exception:
-		# print "Input is not YAML."
-		pass
+		logging.debug( "Input is not YAML." )
 
-if not isJSON and not isYAML:
-	print "Error: This program expects a CloudFormation JSON or YAML Template on STDIN. (For example, via a pipe.)"
+if not is_json and not is_yaml:
+	print( "Error: This program expects a CloudFormation JSON or YAML Template on STDIN. (For example, via a pipe.)" )
 	sys.exit( 1 )
 
 try:
-	inputParameters = input[ 'Parameters' ]
+	input_parameters = input_loaded[ 'Parameters' ]
 except:
-	print( 'Error: Did not find a "Parameters' + ( '":', ':"' )[ isYAML ] + ' section in the ' + ( 'JSON', 'YAML' )[ isYAML ] + ' input!' )
-	print( 'Make sure you are sending a CloudFormation Template into this script. If you are, check your ' + ( 'JSON', 'YAML' )[ isYAML ] + ' syntax.' )
+	print( 'Error: Did not find a "Parameters' + ( '":', ':"' )[ is_yaml ] + ' section in the ' + ( 'JSON', 'YAML' )[ is_yaml ] + ' input!' )
+	print( 'Make sure you are sending a CloudFormation Template into this script. If you are, check your ' + ( 'JSON', 'YAML' )[ is_yaml ] + ' syntax.' )
 	print( "If your CF Template doesn't have Parameters, then you don't need to use this script!" )
 	sys.exit( 1 )
 
 
-for parameter in inputParameters:	# This is just so we can sort by parameter name
-	parameters.append( parameter )
+parameters = list( input_parameters )
 parameters.sort()
 
 for parameter in parameters:
-	thisParam = {}
-	thisParam[ 'ParameterKey' ] = parameter
-	thisParam[ 'ParameterValue' ] = "REPLACE THIS WITH: "	# We will be appending to this string with the additional stuff below
+	this_param = {}
+	this_param[ 'ParameterKey' ] = parameter
 
-	if 'Type' in inputParameters[ parameter ]:
-		thisParam[ 'ParameterValue' ] += str( inputParameters[ parameter ][ 'Type' ] ) + " - "
+	this_parametervalue_list = []
+	this_parametervalue_list.append( "REPLACE THIS WITH: " )	# We will be appending to this string with the additional stuff below
 
-	if 'Default' in inputParameters[ parameter ]:
-		thisParam[ 'ParameterValue' ] += 'Default:\'' + str( inputParameters[ parameter ][ 'Default' ] ) + "\' - "
+	if 'Type' in input_parameters[ parameter ]:
+		this_parametervalue_list.append( str( input_parameters[ parameter ][ 'Type' ] ) + " - " )
 
-	if 'AllowedValues' in inputParameters[ parameter ]:
-		thisParam[ 'ParameterValue' ] += 'Allowed:[' + ', '.join( inputParameters[ parameter ][ 'AllowedValues' ] ) + '] - '
+	if 'Default' in input_parameters[ parameter ]:
+		this_parametervalue_list.append( 'Default:\'' + str( input_parameters[ parameter ][ 'Default' ] ) + "\' - " )
 
-	if 'Description' in inputParameters[ parameter ]:
-		thisParam[ 'ParameterValue' ] += str( inputParameters[ parameter ][ 'Description' ] )
+	if 'AllowedValues' in input_parameters[ parameter ]:
+		this_parametervalue_list.append( 'Allowed:[' + ', '.join( str( x ) for x in input_parameters[ parameter ][ 'AllowedValues' ] ) + '] - ' )
 
-	outputJSON.append( thisParam )
+	if 'Description' in input_parameters[ parameter ]:
+		this_parametervalue_list.append( str( input_parameters[ parameter ][ 'Description' ] ) )
 
-print json.dumps( outputJSON, sort_keys = True, indent = 4 )
+	this_param[ 'ParameterValue' ] = ''.join( this_parametervalue_list )
+	output_json.append( this_param )
+
+print( json.dumps( output_json, sort_keys = True, indent = 4 ) )

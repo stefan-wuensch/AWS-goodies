@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 
 # check_aws_access_keys.sh
-# Stefan Wuensch, 2017-07-26
+# Stefan Wuensch, 2017
 #
 # Usage: check_aws_access_keys.sh [ name-of-AWS-config-profile ]
 #
-# Requires: AWS CLI
+# Requires:
+# 	- AWS CLI
+# 	- AWS IAM User Access Key(s)
 #
 # This takes "profile" entries from your ~/.aws/config file and outputs the
 # IAM user name _and_ the AWS Account Name for each profile. In other words, you
