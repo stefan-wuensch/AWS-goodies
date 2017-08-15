@@ -14,7 +14,7 @@
 #
 # This takes "profile" entries from your ~/.aws/config file and outputs the
 # IAM user name _and_ the AWS Account Name for each profile. In other words, you
-# can give it a bunch of keys and it will tell you the username and acccount name
+# can give it a bunch of keys and it will tell you the username and account name
 # if you don't know them! This is handy because sometimes you don't want to name
 # the "profile" in the config file the same as the AWS Account name or username,
 # and over time you might forget which key is which! (I have done that!)
