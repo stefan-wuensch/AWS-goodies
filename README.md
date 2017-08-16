@@ -8,6 +8,44 @@ Scripts
 ==================
 
 
+## check_aws_access_keys.sh
+
+
+### Usage:
+
+`check_aws_access_keys.sh [ name-of-AWS-config-profile ]`
+
+### Requires:
+	- AWS CLI
+	- AWS IAM User Access Key(s)
+
+### Optional:
+	- User IAM Policy allowed actions iam:GetUser and iam:ListAccountAliases
+
+### Description
+
+This takes "profile" entries from your `~/.aws/config` file and outputs the IAM user name _and_ the AWS Account Name for each profile. In other words, you can give it a bunch of keys and it will tell you the username and account name if you don't know them! This is handy because sometimes you don't want to name the "profile" in the config file the same as the AWS Account name or username, and over time you might forget which key is which! (I have done that!)
+
+If no argument is given, this will grab all "profile" entries from your `~/.aws/config` file. An optional single argument can be given if you want to check only that profile.
+
+If there's an error getting the username or the account name (or both) the string `error` will replace the item that could not be found. If you get `error@error` for output, it most likely means that Access Key has been disabled / revoked.
+
+Note: if the IAM User account for a certain Access Key / profile does not have the IAM permission `iam:ListAccountAliases`, an attempt will still be made to grab the AWS Account numeric ID. If the output for a particular profile looks like `john_harvard@123456789012` then you know the Access Key is working, but the `iam:ListAccountAliases` permission is not given to that IAM User account.
+
+### See also:
+
+http://docs.aws.amazon.com/cli/latest/userguide/cli-multiple-profiles.html
+
+http://docs.aws.amazon.com/cli/latest/userguide/cli-config-files.html
+
+http://docs.aws.amazon.com/IAM/latest/APIReference/API_GetUser.html
+
+http://docs.aws.amazon.com/IAM/latest/APIReference/API_ListAccountAliases.html
+
+
+
+
+
 Check_admins_for_MFA
 ----------------------
 A script which looks at all the user accounts in an administrators' group and checks to see if they are also in 
