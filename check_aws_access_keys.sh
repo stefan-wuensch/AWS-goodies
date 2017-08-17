@@ -7,21 +7,29 @@
 #
 # Requires:
 # 	- AWS CLI
-# 	- AWS IAM User Access Key(s)
+# 	- AWS IAM User Access Key(s) in either or both:
+# 		~/.aws/config
+# 		~/.aws/credentials
 #
 # Optional:
 # 	- User IAM Policy allowed actions iam:GetUser and iam:ListAccountAliases
 #
-# This takes "profile" entries from your ~/.aws/config file and outputs the
-# IAM user name _and_ the AWS Account Name for each profile. In other words, you
+# Example Output:
+# 	deploy : deploy-account@mycompany-production
+# 	my-dev-profile : john_doe@johns-AWS-dev-account
+# 	not-working-keys : error@error
+# 	prod : john_doe@mycompany-production
+#
+# This takes "profile" entries from your AWS config & credentials files and outputs
+# the IAM user name _and_ the AWS Account Name for each profile. In other words, you
 # can give it a bunch of keys and it will tell you the username and account name
 # if you don't know them! This is handy because sometimes you don't want to name
 # the "profile" in the config file the same as the AWS Account name or username,
 # and over time you might forget which key is which! (I have done that!)
 #
 # If no argument is given, this will grab all "profile" entries from your ~/.aws/config
-# file. An optional single argument can be given if you want to check only
-# that profile.
+# and/or ~/.aws/credentials files. An optional argument can be given if you want to
+# check only that one profile. (Only one arg will be used. Any others will be ignored.)
 #
 # If there's an error getting the username or the account name (or both) the
 # string "error" will replace the item that could not be found. If you get
@@ -31,7 +39,7 @@
 # Note: if the IAM User account for a certain Access Key / profile does not have
 # the IAM permission iam:ListAccountAliases, an attempt will still be made to grab
 # the AWS Account numeric ID. If the output for a particular profile looks like
-# "john_harvard@123456789012" then you know the Access Key is working, but the
+# "john_doe@123456789012" then you know the Access Key is working, but the
 # iam:ListAccountAliases permission is not given to that IAM User account.
 #
 # See also:
@@ -41,17 +49,36 @@
 # http://docs.aws.amazon.com/IAM/latest/APIReference/API_ListAccountAliases.html
 #
 
-# If no arg, grab everything from the AWS CLI config, except if it's commented out with a leading ';'
-[[ $# -eq 0 ]] && profiles=$( grep profile ${HOME}/.aws/config | grep -v '^;' | sed -e 's/^.*profile //g' | cut -d\] -f1 | sort | uniq )
+# Grab everything from the AWS CLI config, except if it's commented out with a leading ';'
+configProfiles=$( grep profile ${HOME}/.aws/config 2>/dev/null | grep -v '^;' | sed -e 's/^.*profile //g' | cut -d\] -f1 )
 
-# If we get an arg (and only one) use it instead of the list of all profiles.
-[[ $# -eq 1 ]] && profiles="${1}"
+# Grab everything from the AWS CLI credentials, except if it's commented out with a leading ';'
+# Note the 'awk' is using a regex so that we can use _both_ '[' and ']' as field separators.
+credentialsProfiles=$( grep '\[' ${HOME}/.aws/credentials 2>/dev/null | grep -v '^;' | awk -F'[\]\[]' '{print $2}' )
 
-# If we got nothing, say so. (We don't need to exit here because in a moment it will be a no-op loop over nothing.)
-[[ -z "${profiles}" ]] && >&2 echo "Found no AWS account profiles. Nothing to do. Check \"${HOME}/.aws/config\" file."
+# Take all the profile names and make one list, removing dupes. Since profile names can't contain spaces,
+# we can simply transform them into newlines in order to do a simple unique operation.
+profiles=$( ( echo ${configProfiles} ; echo ${credentialsProfiles} ) | tr ' ' '\n' | sort | uniq )
+
+# If we got nothing, say so and bail.
+if [[ -z "${profiles}" ]] ; then
+	>&2 echo "Found no AWS account profiles. Nothing to do. Check \"${HOME}/.aws/config\" and \"${HOME}/.aws/credentials\" files."
+	exit 1
+fi
+
+# If we get args use the first one as the profile name instead of the list of all profiles,
+# but only if it's actually in the list of everything found in the two files.
+if [[ $# -gt 0 ]] ; then
+	if $( echo "${profiles}" | egrep -q "^${1}$" ) ; then
+		profiles="${1}"
+	else
+		>&2 echo "Profile \"${1}\" not found in ${HOME}/.aws/config nor ${HOME}/.aws/credentials - bailing out."
+		exit 2
+	fi
+fi
 
 # Now loop through all the account profiles and test each one.
-for profile in $( echo $profiles ) ; do
+for profile in $( echo ${profiles} ) ; do
 
 	# First try getting the UserName from IAM. This requires iam:GetUser permission.
 	username=$( aws iam get-user --query User.UserName --output=text --profile=${profile} 2>/dev/null ) || username="error"
