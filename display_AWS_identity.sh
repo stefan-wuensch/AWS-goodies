@@ -1,21 +1,25 @@
 #!/usr/bin/env bash
 
 
-################################################################################
-# display_AWS_identity
-# 
-# Function by Stefan Wuensch 2017
+####################################################################################################
+# display_AWS_identity()
+#
+# Function by Stefan Wuensch 2017-11-17
+#
 # This displays the AWS IAM User Name and AWS Account Name, so that not only
 # is it clear what's happening, but also there's a validation of the AWS
 # session / credentials. This works with STS (keys & MFA stored in environment
 # variables) and SAML (HKey session).
-# 
+#
 # Usage: Paste this into any bash script, then simply call it by
 # including "display_AWS_identity" somewhere in your script.
+#
 # This function performs output to STDOUT only, so it won't
 # interrupt any other program flow. However, if you do want to
 # bail out on a failure to validate the credentials, simply
 # un-comment the line near the end that contains "exit".
+# You can also process the return state of this function:
+# 0 -> OK, 1 -> Error
 
 function display_AWS_identity() {
 
@@ -46,7 +50,7 @@ function display_AWS_identity() {
 	# back from the "get-caller-identity" call, then use the ones that worked.
 	[[ "${username}" == "error"    ]] && [[ -n "${roleName}" ]] && username=${roleName}
 	[[ "${accountName}" == "error" ]] && [[ -n "${accountID}"  ]] && accountName=${accountID}
-	
+
 	# If however we're using a SAML auth session, we want to show the email address.
 	[[ -n "${HKey_email}" ]] && username=${HKey_email}
 
@@ -62,7 +66,8 @@ function display_AWS_identity() {
 	fi
 
 }
-################################################################################
+# function display_AWS_identity() END
+####################################################################################################
 
 
 # This is here so that this file can simply be used stand-alone.
