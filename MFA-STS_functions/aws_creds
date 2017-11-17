@@ -8,11 +8,11 @@
 #
 #
 # Requirements:
-# 	• Mac OS (secrets are stored in Mac OS Keychain)
-# 	• oathtool - http://www.nongnu.org/oath-toolkit/ or from Homebrew
-# 	• aws_session function from
+# 	- Mac OS (secrets are stored in Mac OS Keychain)
+# 	- oathtool - http://www.nongnu.org/oath-toolkit/ or from Homebrew
+# 	- aws_session function from
 # 		https://github.com/stefan-wuensch/AWS-goodies/blob/master/MFA-STS_functions/AWS_STS_functions.zsh
-# 	• AWS CLI tools - "pip install awscli" is recommended
+# 	- AWS CLI tools - "pip install awscli" is recommended
 #
 #
 #
